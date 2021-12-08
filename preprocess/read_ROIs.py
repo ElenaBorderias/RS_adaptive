@@ -17,19 +17,29 @@ from pydicom.dataset import Dataset
 src = r"X:\Elena_test"
 # parse data folder
 roi_names = []
+n_times = []
+n_patients = []
 
 ##Margeries code
 roi_names = []
 for patient in os.listdir(src):
     # get patient file
+    rois_patient = []
     srcfolder = os.path.join(src,patient)
     for f in os.listdir(srcfolder):
-        if 'RTSTRUCT' in j: # verify that it is a DICOM image
-            dcm = pydicom.read_file(os.path.join(src,f))
-            if dcm.Modality == 'RTSTRUCT':
-                for dcm_struct in dcm.StructureSetROISequence: 
-                    roi_names.append(dcm_struct.ROIName)
-                    print(dcm_struct.ROIName)
+        if 'RTSTRUCT' in f: # verify that it is a DICOM image
+            dcm = pydicom.read_file(os.path.join(src,patient,f))
+            for dcm_struct in dcm.StructureSetROISequence: 
+                name = dcm_struct.ROIName
+                if name not in roi_names:
+                    roi_names.append(name)
+                    n_times.append(1)
+                    n_patients.append([patient])
+                else:
+                    roi_index = roi_names.index(name) 
+                    n_times[roi_index] = n_times[roi_index] + 1
+                    n_patients[roi_index].append(patient)
+
 
 # convert all names to uppercase to avoid repetitions
 # for i in range(len(roi_names)):
@@ -39,8 +49,6 @@ for patient in os.listdir(src):
 roi_names = np.unique(roi_names)
     
 # write to excel
-df=pd.DataFrame({'Names':roi_names,
-                 'Needed or not':np.zeros(len(roi_names)),
-                 'New name':np.zeros(len(roi_names))}) 
+df=pd.DataFrame({'#': n_times,'patienets', n_patients, 'Names':roi_names,'New name':np.zeros(len(roi_names))})  
 
 df.to_excel(r'Y:\Elena\RaySearch_internship\HAN_IMPT_dictionary_not_all_caps.xlsx',index = False)
