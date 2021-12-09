@@ -20,6 +20,7 @@ roi_names = []
 n_times = []
 n_patients = []
 
+""" 
 # Margeries code
 roi_names = []
 for patient in os.listdir(src):
@@ -46,3 +47,4 @@ print(roi_names[0],n_patients[0])
 df = pd.DataFrame({'#': n_times,'patients': n_patients,'Names': roi_names, 'New name': np.zeros(len(roi_names))})
 
 df.to_excel(r'Y:\Elena\RaySearch_internship\HAN_IMPT_dictionary_not_all_caps.xlsx', index=False)
+"""
