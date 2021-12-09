@@ -37,6 +37,8 @@ for i in sorted(os.listdir(src)):
 for patient in os.listdir(src):
     # get patient file
     srcfolder = os.path.join(src,patient)
+    if (os.path.exists(os.path.join(srcfolder, 'CT'))):
+        continue;
     
     if not patient[0] == '.':
         ctfolder = os.path.join(srcfolder,'CT')
