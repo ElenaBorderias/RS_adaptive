@@ -6,7 +6,6 @@ Created on Sat Sep  5 20:34:46 2020
 @author: elena
 """
 import ast
-import json
 # import libraries
 from os import listdir
 from os.path import join
