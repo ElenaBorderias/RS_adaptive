@@ -5,6 +5,8 @@ Created on Sat Sep  5 20:34:46 2020
 
 @author: elena
 """
+import ast
+import json
 # import libraries
 from os import listdir
 from os.path import join
@@ -15,6 +17,32 @@ from pydicom import dcmread
 
 import env
 
+
+def checkPatient(patient, new_names_for_patient):
+    valid_names = list(filter(lambda x: x != '', new_names_for_patient))
+    if (len(valid_names) > len(set(valid_names))):
+        raise Exception(
+            'Patient [' + patient + ']: there are duplicates in the new names list: ' + new_names_for_patient)
+
+# patient_new_name struct looks like [[['ANON1','ANON2'], 'new_name']] output is dict with name per patient
+
+
+def patientNamesPerPatient(patient_new_name):
+    patients = {}
+    for new_name_mapping in patient_new_name:
+        for patient in new_name_mapping[0]:
+            if not patients.get(patient):
+                patients[patient] = []
+            patients[patient].append(new_name_mapping[1])
+    return patients
+
+
+def checkPatientROINamesForDuplicates(patients, new_names):
+    pateint_dict = patientNamesPerPatient(zip(patients, new_names))
+    for patient, names in pateint_dict.items():
+        checkPatient(patient, names)
+
+
 # data path
 src = env.properties['patientsFolder']
 
@@ -22,17 +50,15 @@ src = env.properties['patientsFolder']
 roi_information = pd.read_excel(env.properties['roiExcel'], engine='openpyxl')
 
 rtstruct_names = roi_information["Names"].values.tolist()  # standard names
+patients = [ast.literal_eval(patient)
+            for patient in roi_information["patients"].values.tolist()]
 # new names
 new_names = [
     '' if x is numpy.nan else x for x in roi_information["New name"].values.tolist()]
 
-valid_names = list(filter(lambda x: x != '', new_names))
-if (len(valid_names) > len(set(valid_names))):
-    raise Exception('There are duplicates in the new names list: ' + new_names)
+checkPatientROINamesForDuplicates(patients, new_names)
 
 new_name_mapping = dict(zip(rtstruct_names, new_names))
-
-
 for patient in listdir(src):
     if (env.properties['patientFilter'] and patient not in env.properties['patientFilter']):
         continue
