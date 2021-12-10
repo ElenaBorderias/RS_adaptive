@@ -6,42 +6,44 @@ Created on Sat Sep  5 20:34:46 2020
 @author: elena
 """
 # import libraries
-import os
-import shutil
-import pydicom
+from os import listdir
+from os.path import join
+
+import numpy
 import pandas as pd
-import numpy as np
-from pydicom.dataset import Dataset
 from pydicom import dcmread
 
+import env
+
 # data path
-src = r"X:\Elena_test"
-# parse data folder
-roi_names = []
-n_times = []
-n_patients = []
+src = env.properties['patientsFolder']
 
 # get content of dictionary
-dict_path = 'Y:\Elena\RaySearch_internship\HAN_IMPT_dictionary_not_all_caps.xlsx'
-dictionary = pd.read_excel(dict_path, engine='openpyxl')
+roi_information = pd.read_excel(env.properties['roiExcel'], engine='openpyxl')
 
-rtstruct_names = dictionary["Names"] # standard names
-new_names = dictionary["New name"] # new names 
+rtstruct_names = roi_information["Names"].values.tolist()  # standard names
+# new names
+new_names = [
+    '' if x is numpy.nan else x for x in roi_information["New name"].values.tolist()]
+
+valid_names = list(filter(lambda x: x != '', new_names))
+if (len(valid_names) > len(set(valid_names))):
+    raise Exception('There are duplicates in the new names list: ' + new_names)
+
+new_name_mapping = dict(zip(rtstruct_names, new_names))
 
 
-for patient in os.listdir(src):
+for patient in listdir(src):
+    if (env.properties['patientFilter'] and patient not in env.properties['patientFilter']):
+        continue
     # get patient file
     rois_patient = []
-    srcfolder = os.path.join(src, patient)
-    for f in os.listdir(srcfolder):
+    patient_folder = join(src, patient)
+    for f in listdir(patient_folder):
         if 'RTSTRUCT' in f:  # verify that it is a DICOM image
-            dcm_struct = dcmread(os.path.join(src, patient, f))
+            dcm_struct = dcmread(join(patient_folder, f))
             for roi in dcm_struct.StructureSetROISequence:
                 name = roi.ROIName
-                if name in new_names:
-                    roi_index = roi_names.index(name)
-                    roi.ROIName = new_names[roi_index]
-            dcm_struct.save_as(os.path.join(src, patient, f))
-            
-        
-
+                if new_name_mapping[name] != '':
+                    roi.ROIName = new_name_mapping[name]
+            dcm_struct.save_as(join(patient_folder, 'ValidROIs_' + f))

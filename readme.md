@@ -1,3 +1,7 @@
+
+### Setting up an env
+Copy the env_template.json file and create a new one called env.json which you fill in with the required info.
+
 ### Setting up the virtual environmnet for PIP
 For a new setup use:
 

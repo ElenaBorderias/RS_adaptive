@@ -1,0 +1,5 @@
+{
+  "patientsFolder": "/Users/comas/develop/elena/dicom_samples",
+  "patientFilter": ["ANON1"],
+  "roiExcel": "/Users/comas/develop/elena/dicom_samples/HAN.xlsx"
+}

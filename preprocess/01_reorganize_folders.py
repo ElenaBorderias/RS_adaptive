@@ -12,8 +12,10 @@ import shutil
 import pydicom
 from pydicom.dataset import Dataset
 
+import env
+
 # data path
-src = os.path.abspath(r"/Users/comas/develop/elena/dicom_samples")
+src = env.properties['patientsFolder']
 # parse data folder
 roi_names = []
 
@@ -42,7 +44,7 @@ def getPreviousRun(patient_folder):
 for patient in os.listdir(src):
     patient_folder = os.path.join(src, patient)
 
-    if (os.path.isdir(patient_folder) and patient == 'ANON1'):
+    if (os.path.isdir(patient_folder) and (not env.properties['patientFilter'] or patient in env.properties['patientFilter'])):
         processed_files = getPreviousRun(patient_folder)
         ct_folder = os.path.join(patient_folder, 'CT')
         cbct_folder = os.path.join(patient_folder, 'CBCT')
