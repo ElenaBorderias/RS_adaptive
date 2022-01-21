@@ -8,10 +8,10 @@ from pydicom.dataset import Dataset
 runDicomRead = True
 runDicomWrite = False
 
-studyID = 'CBCT 1'
-seriesNumber = '1'
+studyID = 'CBCT 2'
+seriesNumber = '2'
 
-os.chdir('/Users/comas/develop/elena/dicom_samples/AnonExample/CBCT/01_1.2.246.352.62.2.4727064650066947855.2549107407885888896')
+os.chdir('C:\\Patients\\ANON1\\CBCT\\02_1.2.246.352.62.2.4617570859487105173.2989146184136452022')
 
 for file in os.listdir():
     print(file)
