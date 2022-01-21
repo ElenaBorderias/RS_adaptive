@@ -15,11 +15,11 @@ os.chdir('/Users/comas/develop/elena/dicom_samples/AnonExample/CBCT/01_1.2.246.3
 
 for file in os.listdir():
     print(file)
-    if (runDicomRead) and 'trial' in file:
+    if (runDicomRead):
         dcm_header = pydicom.read_file(file, force=True)
         print(dcm_header.StudyID)
         print(dcm_header.SeriesNumber)
         if (runDicomWrite):
             dcm_header.StudyID = studyID
             dcm_header.SeriesNumber = seriesNumber
-            dcm_header.save_as('trial_' + file)
+            dcm_header.save_as(file)
