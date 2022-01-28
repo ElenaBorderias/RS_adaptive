@@ -42,7 +42,6 @@ for patient in listdir(patient_path):
                 rename(join(patient_path, patient, 'CBCT', cbct_row['uid']), join(patient_path, patient, 'CBCT', str(i).zfill(2) + '_' + cbct_row['uid']))
         
         
-        
 
 # =============================================================================
 # for patient in listdir(patient_path):
