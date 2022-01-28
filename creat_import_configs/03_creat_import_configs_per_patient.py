@@ -43,5 +43,13 @@ for index, patient_data in anon_data_full.iterrows():
         print('not processing', patient_data)
 
 
+for patient in listdir():
+    if (isdir(patient)):
+        patient_path = join(patient)
+        if (patient in ['ANON1']):
+            with open(join(patient_path, "import_info.json"), "w") as outfile:
+                json.dump(patient_info[patient], outfile)
+
+
 with open("all_patient_import_info.json", "w") as outfile:
     json.dump(patient_info, outfile)
