@@ -14,56 +14,82 @@ import pandas as pd
 import pydicom
 import numpy as np
 
+from scipy.signal import argrelextrema
+from findpeaks import findpeaks
+
+from sklearn import mixture
+
+
 #import env
 
 # data path
 src = "X:\\Elena_test"
-excel_path = "X:\\log_file_xlxs.xlsx"
+excel_path = "X:\\log_file_modified.xlsx"
+export_excel_path = "X:\\features.xlsx"
 export_hist_path = "X:\\dose_histograms"
-anon_data_full= pd.read_excel(excel_path, engine='openpyxl')
+anon_data_full = pd.read_excel(excel_path, engine='openpyxl')
 
-features = anon_data_full[['Anon name','StructureSetLabel']]
+features = anon_data_full[['Anon name', 'StructureSetLabel']]
 
 features.columns = ['name', 'localisation']
 
 n_cbcts = []
-n_frac =  []
+n_frac = []
 prescriptuon = []
 max_dose = []
 
-for patient in listdir(src):
-        # # get patient file
-        # if (env.properties['patientFilter'] and patient not in env.properties['patientFilter']):
-        #     continue
-        patient_folder = join(src, patient)
-    
-        #cbcts
-        number_of_cbcts = len(listdir(join(patient_folder, 'CBCT')))
-        n_cbcts.append(number_of_cbcts)
-        
-        #prescription
-        
-        for f in listdir(patient_folder):
-            if isfile(join(patient_folder, f)) and 'RTDOSE' in f:  # verify that it is a DICOM image
-                dcm = pydicom.read_file(join(src, patient, f))
-                dose = dcm.pixel_array * dcm.DoseGridScaling #dose in  grays
-                
-                max_dose.append(dose.max())
-                
-                hist, bins = np.histogram(dose, bins=30, range= (40,72), normed=None, weights=None, density=None) ##every 2 Gy
-                
-                width = np.diff(bins)
-                center = (bins[:-1] + bins[1:]) / 2
-                fig, ax = plt.subplots(figsize=(20,5))
-                ax.bar(center, hist, align='center', width=width)
-                ax.set_xticks(bins)
-                ax.set_title(patient)
-               
-                print(dcm)
-        
+#check_pat = []
+dose_peaks = []
+
+patient_list = anon_data_full['Anon name'].to_numpy()
+patient_list =  patient_list.tolist()
+
+for patient in patient_list:
+    # # get patient file
+    # if (env.properties['patientFilter'] and patient not in env.properties['patientFilter']):
+    #     continue
+    patient_folder = join(src, patient)
+
+    # cbcts
+    number_of_cbcts = len(listdir(join(patient_folder, 'CBCT')))
+    n_cbcts.append(number_of_cbcts)
+
+    # prescription
+
+    for f in listdir(patient_folder):
+        if isfile(join(patient_folder, f)) and 'RTDOSE' in f:  # verify that it is a DICOM image
             
+            
+            dcm = pydicom.read_file(join(src, patient, f))
+            dose = dcm.pixel_array * dcm.DoseGridScaling  # dose in  grays
+
+            max_dose.append(dose.max())
+            ##check_pat.append(patient)
+
+            hist, bins = np.histogram(dose, bins=30, range=(40, 72), normed=None, weights=None, density=None)  # every 2 Gy is 16 bins
+            peaks_index = argrelextrema(hist, np.greater)
+            
+            
+            dose_peaks_per_pat = np.round(bins[peaks_index],2).tolist()
+            
+            print(dose_peaks_per_pat)
+            
+            dose_peaks.append(dose_peaks_per_pat)
+            
+            width = np.diff(bins)
+            center = (bins[:-1] + bins[1:]) / 2
+            fig, ax = plt.subplots(figsize=(30, 5))
+            ax.bar(center, hist, align='center', width=width)
+            ax.set_xticks(bins)
+            ax.set_title(patient)
+
+            fig.savefig(join(export_hist_path,patient+".png"))
+
 features['n_cbcts'] = n_cbcts
-          
+features['dose max'] = max_dose
+features['dose_peaks'] = dose_peaks
+features['prescription'] = ""
+
 # =============================================================================
 #             for dcm_struct in dcm.StructureSetROISequence:
 #                 name = dcm_struct.ROIName
@@ -77,4 +103,5 @@ features['n_cbcts'] = n_cbcts
 #                     n_patients[roi_index].append(patient)
 # =============================================================================
 
-features.to_excel(env.properties['featuresExcel'], index=False)
+
+features.to_excel(export_excel_path, index=False)
