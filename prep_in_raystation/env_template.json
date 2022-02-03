@@ -1,0 +1,5 @@
+{
+  "patientsFolder": "C:\\Patients",
+  "patientFilter": ["ANON6","ANON16"],
+  "roiExcel": "/Users/comas/develop/elena/dicom_samples/HAN.xlsx"
+}

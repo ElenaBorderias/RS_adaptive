@@ -11,14 +11,14 @@ from connect import get_current
 
 
 analytical_plan_name = "IMPT_plan"
-ml_plan_name = "ML_IMPT_plan"
+ml_plan_name = "Adap_ML"
 xt_plan_name = "Empty plan"
-pCT_name = "pCT"
-
+pCT_name = "vCT 01"
+ml_model_name = "model_try_1"
+ml_strategy = "IMPT Demo"
 
 run_analytical_plan = False
 run_ml_plan = True
-
 
 def copy_dosegrid_from_plan_to_plan(from_plan, to_plan):
     # get dose grid
@@ -72,7 +72,11 @@ def add_beams_to_plan(plan_name, ct_name):
     plan = case.TreatmentPlans[plan_name]
     beam_set = plan.BeamSets[0]
 
-    iso_data = case.PatientModel.StructureSets[ct_name].RoiGeometries["CTV_all"].GetCenterOfRoi()
+   
+    if ct_name.startswith("vCT"):
+        iso_data = case.PatientModel.StructureSets[ct_name].RoiGeometries["rr_CTV_all"].GetCenterOfRoi()
+    else:
+        iso_data = case.PatientModel.StructureSets[ct_name].RoiGeometries["CTV_all"].GetCenterOfRoi()
 
     print(iso_data)
 
@@ -141,21 +145,23 @@ def set_robustness_parameters(plan_name, setup_error, range_error):
     plan = case.TreatmentPlans[plan_name]
     po = plan.PlanOptimizations[0]
     po.OptimizationParameters.SaveRobustnessParameters(PositionUncertaintyAnterior=setup_error,
-                                                    PositionUncertaintyPosterior=setup_error,
-                                                    PositionUncertaintySuperior=setup_error,
-                                                    PositionUncertaintyInferior=setup_error,
-                                                    PositionUncertaintyLeft=setup_error,
-                                                    PositionUncertaintyRight=setup_error,
-                                                    DensityUncertainty=range_error,
-                                                    PositionUncertaintySetting="Universal", IndependentLeftRight=True,
-                                                    IndependentAnteriorPosterior=True, IndependentSuperiorInferior=True,
-                                                    ComputeExactScenarioDoses=False, NamesOfNonPlanningExaminations=[],
-                                                    PatientGeometryUncertaintyType="PerTreatmentCourse",
-                                                    PositionUncertaintyType="PerTreatmentCourse", TreatmentCourseScenariosFactor=1000)
+                                                       PositionUncertaintyPosterior=setup_error,
+                                                       PositionUncertaintySuperior=setup_error,
+                                                       PositionUncertaintyInferior=setup_error,
+                                                       PositionUncertaintyLeft=setup_error,
+                                                       PositionUncertaintyRight=setup_error,
+                                                       DensityUncertainty=range_error,
+                                                       PositionUncertaintySetting="Universal", IndependentLeftRight=True,
+                                                       IndependentAnteriorPosterior=True, IndependentSuperiorInferior=True,
+                                                       ComputeExactScenarioDoses=False, NamesOfNonPlanningExaminations=[],
+                                                       PatientGeometryUncertaintyType="PerTreatmentCourse",
+                                                       PositionUncertaintyType="PerTreatmentCourse", TreatmentCourseScenariosFactor=1000)
 
 
 patient = get_current("Patient")
 case = get_current("Case")
+machine_learning_db = get_current("MachineLearningDB")
+ml_models_info = machine_learning_db.QueryMachineLearningModelInfo()
 
 xt_plan = case.TreatmentPlans[xt_plan_name]
 
@@ -210,7 +216,7 @@ if run_analytical_plan:
 
     add_beams_to_plan(analytical_plan_name, pCT_name)
     add_optimization_objectives(analytical_plan_name)
-    set_robustness_parameters(analytical_plan_name,0.4,0.03)
+    set_robustness_parameters(analytical_plan_name, 0.4, 0.03)
 
     # run analytical plan optimization
     copy_dosegrid_from_plan_to_plan(xt_plan, plan)
@@ -239,10 +245,24 @@ if run_ml_plan:
 
         ml_plan = case.TreatmentPlans[ml_plan_name]
 
-        retval_1 = ml_plan.AddNewAutomaticPlanningBeamSet(MachineLearningModelID="e93c97da-3520-47a8-820a-a27efc14e58f",
-                                                          AutomaticPlanningParameters={'Name': "RSL-IMPT-Oropharynx-7000-SIB (Demo)", 'Strategy': "IMPT Demo",
+        for ml_mod in ml_models_info:
+            print(ml_mod["Name"])
+            if ml_mod["Name"] ==  ml_model_name:
+                ml_model_id = ml_mod["UUId"]
+                print("This is the model you were looking for!")
+            else:
+                print("No matching machine learning model for the given name ", ml_model_name)
+        
+        if pCT_name.startswith("vCT"):
+            roi_matches_planning = "{\"CTV_High\":\"rr_CTV_7000\",\"CTV_Low\":\"rr_CTV_5425\",\"Brainstem\":\"rr_Brainstem\",\"SpinalCord\":\"rr_SpinalCord\",\"Parotid_L\":\"rr_Parotid_L\",\"Parotid_R\":\"rr_Parotid_R\",\"Glnd_Submand_L\":\"rr_Submandibular_L\",\"Glnd_Submand_R\":\"rr_Submandibular_R\",\"Cavity_Oral\":\"rr_Oral_Cavity\",\"Musc_Constrict_I\":\"rr_PharConsInf\",\"Musc_Constrict_M\":\"rr_PharConsMid\",\"Musc_Constrict_S\":\"rr_PharConsSup\",\"External\":\"BODY\",\"rr_CTV_High+10mm\":\"rr_CTV70+10mm\",\"CTV_Low-CTV_High+10mm\":\"rr_CTV54.25-CTV70+10mm\",\"Esophagus\":\"rr_Esophagus\"}"
+        else:
+            roi_matches_planning = "{\"CTV_High\":\"CTV_7000\",\"CTV_Low\":\"CTV_5425\",\"Brainstem\":\"Brainstem\",\"SpinalCord\":\"SpinalCord\",\"Parotid_L\":\"Parotid_L\",\"Parotid_R\":\"Parotid_R\",\"Glnd_Submand_L\":\"Submandibular_L\",\"Glnd_Submand_R\":\"Submandibular_R\",\"Cavity_Oral\":\"Oral_Cavity\",\"Musc_Constrict_I\":\"PharConsInf\",\"Musc_Constrict_M\":\"PharConsMid\",\"Musc_Constrict_S\":\"PharConsSup\",\"External\":\"BODY\",\"CTV_High+10mm\":\"CTV_7000+10mm\",\"CTV_Low-CTV_High+10mm\":\"CTV54.25-CTV70+10mm\",\"Esophagus\":\"Esophagus\"}"
+
+        print(roi_matches_planning)                                                                                                                                            
+        retval_1 = ml_plan.AddNewAutomaticPlanningBeamSet(MachineLearningModelID=ml_model_id,
+                                                          AutomaticPlanningParameters={'Name': ml_model_name, 'Strategy': ml_strategy,
                                                                                        'BeamSetList': "[\"Proton\"]",
-                                                                                       'RoiMatches': "{\"CTV_High\":\"CTV_7000\",\"CTV_Low\":\"CTV_5425\",\"Brain\":\"Brain\",\"Brainstem\":\"Brainstem\",\"SpinalCord\":\"SpinalCord\",\"Parotid_L\":\"Parotid_L\",\"Parotid_R\":\"Parotid_R\",\"Glnd_Submand_L\":\"Submandibular_L\",\"Glnd_Submand_R\":\"Submandibular_R\",\"Cavity_Oral\":\"Oral_Cavity\",\"Musc_Constrict_I\":\"PharConsInf\",\"Musc_Constrict_M\":\"PharConsMid\",\"Musc_Constrict_S\":\"PharConsSup\",\"External\":\"External\",\"CTV_High+10mm\":\"CTV70+10mm\",\"CTV_Low-CTV_High+10mm\":\"CTV54.25-CTV70+10mm\",\"Esophagus\":\"Esophagus\"}" ,
+                                                                                       'RoiMatches':roi_matches_planning,
                                                                                        'BeamSet': "null", 'HasRobustRois': "True", 'Approved': "False", 'ApprovedBy': "", 'ApprovalDate': None},
                                                           Name=ml_plan_name, ExaminationName=pCT_name,
                                                           MachineName="UMCG_P1_MC5_0", Modality="Protons",
@@ -255,7 +275,7 @@ if run_ml_plan:
                                                           Custom=None,
                                                           ToleranceTableLabel=None)
         add_beams_to_plan(ml_plan_name, pCT_name)
-                                                       
+
         dose_grid_size = 0.3
         retval_1.SetDefaultDoseGrid(
             VoxelSize={'x': dose_grid_size, 'y': dose_grid_size, 'z': dose_grid_size})
@@ -267,7 +287,25 @@ if run_ml_plan:
     ml_plan = case.TreatmentPlans[ml_plan_name]
     ml_beam_set = ml_plan.BeamSets[0]
 
-    set_robustness_parameters(ml_plan_name,0.4,0.03)
+    set_robustness_parameters(ml_plan_name, 0.4, 0.03)
+    if pCT_name.startswith("vCT"):
+        roi_matches_run_planning = {'CTV_High': "rr_CTV_7000", 'CTV_Low': "rr_CTV_5425", 
+                                    'Brainstem': "rr_Brainstem", 'SpinalCord': "rr_SpinalCord", 
+                                    'Parotid_L': "rr_Parotid_L", 'Parotid_R': "rr_Parotid_R", 'Glnd_Submand_L': "rr_Submandibular_L",
+                                    'Glnd_Submand_R': "rr_Submandibular_R", 'Cavity_Oral': "rr_Oral_Cavity", 'Musc_Constrict_I': "rr_PharConsInf", 
+                                    'Musc_Constrict_M': "rr_PharConsMid", 'Musc_Constrict_S': "rr_PharConsSup", 'External': "BODY", 
+                                    'CTV_High+10mm': "rr_CTV_7000+10mm", 'CTV_Low-CTV_High+10mm': "rr_CTV54.25-CTV70+10mm", 'Esophagus': "rr_Esophagus"}
+    else:
+        roi_matches_run_planning = {'CTV_High': "CTV_7000", 'CTV_Low': "CTV_5425", 
+                                    'Brainstem': "Brainstem", 'SpinalCord': "SpinalCord", 
+                                    'Parotid_L': "Parotid_L", 'Parotid_R': "Parotid_R", 'Glnd_Submand_L': "Submandibular_L",
+                                    'Glnd_Submand_R': "Submandibular_R", 'Cavity_Oral': "Oral_Cavity", 'Musc_Constrict_I': "PharConsInf", 
+                                    'Musc_Constrict_M': "PharConsMid", 'Musc_Constrict_S': "PharConsSup", 'External': "BODY", 
+                                    'CTV_High+10mm': "CTV_7000+10mm", 'CTV_Low-CTV_High+10mm': "CTV54.25-CTV70+10mm", 'Esophagus': "Esophagus"}
+
+    ml_beam_set.RunAutomaticPlanning(ModelName=ml_model_name, ModelStrategy=ml_strategy, 
+                                    RoiMatches=roi_matches_run_planning)
     
-    ml_beam_set.RunAutomaticPlanning(ModelName="RSL-IMPT-Oropharynx-7000-SIB (Demo)", ModelStrategy="IMPT Demo", RoiMatches={ 'CTV_High': "CTV_7000", 'CTV_Low': "CTV_5425", 'Brain': "Brain", 'Brainstem': "Brainstem", 'SpinalCord': "SpinalCord", 'Parotid_L': "Parotid_L", 'Parotid_R': "Parotid_R", 'Glnd_Submand_L': "Submandibular_L", 'Glnd_Submand_R': "Submandibular_R", 'Cavity_Oral': "Oral_Cavity", 'Musc_Constrict_I': "PharConsInf", 'Musc_Constrict_M': "PharConsMid", 'Musc_Constrict_S': "PharConsSup", 'External': "External", 'CTV_High+10mm': "CTV70+10mm", 'CTV_Low-CTV_High+10mm': "CTV54.25-CTV70+10mm", 'Esophagus': "Esophagus" })
     ml_beam_set.SetAutoScaleToPrimaryPrescription(AutoScale=True)
+
+    ml_plan.ApprovePlanThroughScripting()

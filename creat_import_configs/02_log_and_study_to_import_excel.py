@@ -7,7 +7,10 @@ from os.path import isdir, join
 import openpyxl
 import pandas as pd
 
-patients_path = '/Users/comas/develop/elena/dicom_samples'
+import env
+
+patients_path = env.properties['patientsFolder']
+
 chdir(patients_path)
 
 excel_path = "log_file_EB.xlsx"
@@ -23,19 +26,22 @@ series_order['date-time'] = series_order['date'] + series_order['time']
 series_order['date-time'] = pd.to_datetime(
     series_order['date-time'], format='%Y%m%d%H%M%S',  exact=False)
 
-series_ordered = series_order.sort_values(by=['name', 'date-time'])
-
 study_uid_data = {}
 with open('patient_study_uid.json') as json_file:
     study_uid_data = json.load(json_file)
 
 
 study_df = []
-for i, value in series_ordered['name'].items():
+for i, value in series_order['name'].items():
+    print(i,value)
     study_df.append(study_uid_data.get(
         value, {'StudyInstanceUID': ''}).get('StudyInstanceUID', ''))
 
-series_ordered['study_uid'] = pd.Series(study_df)
+series_order['study_uid'] = pd.Series(study_df)
+
+series_ordered = series_order.sort_values(by=['name', 'date-time'])
+
+
 
 
 series_ordered.to_excel("import_list.xlsx", engine='openpyxl')

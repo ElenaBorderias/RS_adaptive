@@ -3,15 +3,16 @@ import shutil
 from os import chdir, listdir
 from os.path import isdir, join
 
-from pydicom import read_file
-from pydicom.dataset import Dataset
+import env
 
-patients_path = '/Users/comas/develop/elena/dicom_samples'
+from pydicom import read_file
+
+patients_path = env.properties['patientsFolder']
 chdir(patients_path)
 
 patient_config = {}
 for patient in listdir():
-    if (isdir(patient) and '1' in patient):
+    if (isdir(patient) and patient in env.properties['patientFilter']):
         patient_config[patient] = {}
         for file in listdir(patient):
             if "RTSTRUCT" in file:
