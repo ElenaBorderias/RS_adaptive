@@ -5,10 +5,7 @@ Created on Sat Sep  5 20:34:46 2020
 
 @author: elena
 """
-
-from tokenize import maybe
 from connect import get_current
-
 
 analytical_plan_name = "IMPT_plan"
 ml_plan_name = "Adap_ML"

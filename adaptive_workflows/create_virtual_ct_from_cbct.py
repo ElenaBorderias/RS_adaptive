@@ -51,9 +51,6 @@ class CreateConvertedImage:
         """ self.case.PatientModel.StructureRegistrationGroups[self.dir_name].DeformableStructureRegistrations[0].RenameStructureRegistration(
                 NewName=self.dir_name, Description='only one pct') """
         
-        #print(self.case.PatientModel.StructureRegistrationGroups[self.dir_name].Name)
-        #self.case.PatientModel.StructureRegistrationGroups[self.dir_name].DeformableStructureRegistrations[0].Approve()
-
     def rigid_registration(self):
 
         rig_reg_names=[reg.Name for reg in self.case.Registrations]
@@ -134,13 +131,11 @@ class CreateConvertedImage:
     def create_vct(self):
 
         self.initial_structures()
-
-        # 6. VirtualCT algorithm
         self.case.CreateNewVirtualCt(VirtualCtName=self.vct_name, ReferenceExaminationName=self.pct_name,
                             TargetExaminationName=self.cbct_name, DeformableRegistrationName=self.dir_name,
                             FovRoiName=self.fov_roi_name)
 
-        #self.case.PatientModel.RegionsOfInterest['BODY'].CreateExternalGeometry(Examination=self.case.Examinations[self.vct_name], ThresholdLevel=-250)
+        self.case.PatientModel.RegionsOfInterest['BODY'].CreateExternalGeometry(Examination=self.case.Examinations[self.vct_name], ThresholdLevel=-250)
         self.patient.Save()
         print("VirtualCT created successfully")
 
@@ -184,30 +179,11 @@ class CreateConvertedImage:
             print("Your are missing some crucial rr_ROIS")
 
     def create_corrected_cbct(self):
-        
+
+        self.initial_structures()
         self.case.CreateNewCorrectedCbct(CorrectedCbctName=self.corrected_cbct_name, ReferenceExaminationName=self.pct_name, 
                                 TargetExaminationName=self.cbct_name, FovRoiName=self.fov_roi_name, 
                                 DeformableRegistrationName=self.dir_name)
-
-""" pct_name="pCT"
-cbct_names_list=['CBCT 01', 'CBCT 02']
-oars_model=[r"Brainstem", r"SpinalCord",
-            r"Parotid_R", r"Parotid_L", r"Submandibular_L", r"Submandibular_R",
-            r"Oral_Cavity", r"PharConsSup", r"PharConsMid", r"PharConsInf",
-            r"Esophagus", r"BODY"]
-
-targets_model=[r"CTV_5425", r"CTV_7000", r"CTV_all",
-                r"CTV_7000+10mm", r"CTV54.25-CTV70+10mm"]
-
-model_rois=targets_model + oars_model
-
-case=get_current("Case")
-
-for cbct_name in cbct_names_list:
-    index_cbct=cbct_name[-2:]
-    vct_name="vCT " + index_cbct
-    check_and_copy_rois_to_cbct(pct_name, cbct_name, model_rois)
-    create_vct(vct_name, pct_name, cbct_name)
-    case.PatientModel.RegionsOfInterest['BODY'].CreateExternalGeometry(
-        Examination=case.Examinations[vct_name], ThresholdLevel=-250)
- """
+        self.case.PatientModel.RegionsOfInterest['BODY'].CreateExternalGeometry(Examination=self.case.Examinations[self.corrected_cbct_name], ThresholdLevel=-250)
+        self.patient.Save()
+        print("CorrectedCBCT created successfully")
