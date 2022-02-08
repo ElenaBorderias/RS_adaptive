@@ -64,6 +64,7 @@ examinations = case.Examinations
 exam_names = [x.Name for x in examinations]
 rig_reg_names = [reg.Name for reg in case.Registrations]
 
+"""
 if "pCT" in exam_names:
     print("pCT is in exam_names")
     print(exam_names.remove("pCT"))
@@ -71,7 +72,8 @@ if "pCT" in exam_names:
     print(cbct_names_list)
 else:
     print("pCT is not in exam_names")
-
+"""
+cbct_names_list = ["CBCT 02"]
 
 for cbct_name in cbct_names_list:
 
@@ -103,6 +105,6 @@ if run_vcts:
             if reg.Name.startswith("DIR") and reg.ToExamination.Name == cbct_name and reg.FromExamination.Name == pct_name:
                 dir_name = reg.Name
 
-        fov_roi_name = "BODY"
+        fov_roi_name = "FOV CBCT"
         create_vct(vct_name,pct_name,cbct_name,dir_name, fov_roi_name)
 
