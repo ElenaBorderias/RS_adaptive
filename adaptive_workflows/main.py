@@ -7,8 +7,8 @@ from create_virtual_ct_from_cbct import CreateConvertedImage
 def main():
 
     pct_name = "pCT"
-    adapt_pct_name = "vCT 01"
     cbct_names_list = ['CBCT 02']
+
     oars_model = [r"Brainstem", r"SpinalCord",
                   r"Parotid_R", r"Parotid_L", r"Submandibular_L", r"Submandibular_R",
                   r"Oral_Cavity", r"PharConsSup", r"PharConsMid", r"PharConsInf",
@@ -23,14 +23,19 @@ def main():
 
     for cbct_name in cbct_names_list:
         converter = CreateConvertedImage(pct_name, cbct_name, model_rois)
-        if create_corrected_cbct:
+        if "Corrected"
             cbct_name = converter.create_corrected_cbct()
-            
-            adapt_pct_name = "Corrected CBCT 02"
-            cbct_names_list = ['CBCT 02']
-            auto_plan_name = "Adapt_" + cbct_names_list[0]
-            converter_plan = CreateIMPTPlan(adapt_pct_name, auto_plan_name, "try_1_vct", "IMPT Demo", "Default")
-            converter_plan.create_run_and_approve_IMPT_plan()
+        
+        adapt_pct_name = "Corrected CBCT 02"
+        auto_plan_name = "Adapt_" + cbct_names_list[0]
+
+        auto_planning = CreateIMPTPlan(adapt_pct_name, auto_plan_name, "RSL_IMPT_conv_img", "IMPT Demo", "Default")
+        auto_planning.create_run_and_approve_IMPT_plan()
+
+        #mimicking_from_clinical = CreateIMPTPlan(adapt_pct_name, auto_plan_name, "Mimicking_conv_img", "IMPT Demo", "Default")
+        #mimicking_from_clinical.create_run_and_approve_IMPT_plan()
+
+        
 
 
 if __name__ == "__main__":
