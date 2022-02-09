@@ -5,7 +5,7 @@ Created on Sat Sep  5 20:34:46 2020
 
 @author: elena
 """
-from connect import *
+from connect import get_current
 
 class CreateIMPTPlan:
 
@@ -76,7 +76,7 @@ class CreateIMPTPlan:
         plan = self.case.TreatmentPlans[self.ml_plan_name]
         beam_set = plan.BeamSets[0]
 
-        if self.pct_name.startswith("vCT"):
+        if self.pct_name.startswith("vCT") or self.pct_name.startswith("Corrected"):
             iso_data = self.case.PatientModel.StructureSets[self.pct_name].RoiGeometries["rr_CTV_all"].GetCenterOfRoi()
         else:
             iso_data = self.case.PatientModel.StructureSets[self.pct_name].RoiGeometries["CTV_all"].GetCenterOfRoi()

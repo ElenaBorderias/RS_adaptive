@@ -105,7 +105,7 @@ class CreateConvertedImage:
         cbct=self.case.Examinations[self.cbct_name]
 
         cbct.EquipmentInfo.SetImagingSystemReference(ImagingSystemName="Varian OBI")
-        cbct.DeleteLaserExportReferencePoint()
+        #cbct.DeleteLaserExportReferencePoint()
 
         densityThresholds=cbct.GetDensityThresholdsForCbctImage()
         cbct.EquipmentInfo.SetCtToDensityTableForCbctImage(DensityThresholds=densityThresholds)
