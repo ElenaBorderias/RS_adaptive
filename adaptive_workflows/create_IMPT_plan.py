@@ -9,7 +9,7 @@ from connect import get_current
 
 class CreateIMPTPlan:
 
-    def __init__(self, pct_name, plan_name, model_name, model_strategy, dose_grid):
+    def __init__(self, pct_name, plan_name, model_name, model_strategy, dose_grid,needs_ref_dose):
 
         self.pct_name = pct_name
         self.ml_plan_name = plan_name
@@ -24,10 +24,12 @@ class CreateIMPTPlan:
         self.set_up_error = 0.4
         self.range_error = 0.03
         self.dose_grid = dose_grid
+        self.needs_ref_dose = needs_ref_dose
 
-    def copy_dosegrid_from_plan_to_plan(self,from_plan):
+    def copy_dosegrid_from_plan_to_plan(self):
+
         # get dose grid
-        dgr = self.case.TreatmentPlans[from_plan].GetTotalDoseGrid()
+        dgr = self.reference_plan.GetTotalDoseGrid()
         VoxSizeX = dgr.VoxelSize.x
         VoxSizeY = dgr.VoxelSize.y
         VoxSizeZ = dgr.VoxelSize.z
@@ -240,7 +242,22 @@ class CreateIMPTPlan:
         
         self.case.TreatmentPlans[self.ml_plan_name].BeamSets[0].AddRoiPrescriptionDoseReference(RoiName=roi_name, DoseVolume=0, PrescriptionType="MedianDose",
                                                 DoseValue=7000, RelativePrescriptionLevel=1)
-                        
+    
+    def set_reference_predicted_dose(self):
+        
+        ref_dose = self.reference_plan.TreatmentCourse.TotalDose.DoseValues.DoseData
+        po = self.case.TreatmentPlans[self.ml_plan_name].PlanOptimizations[0]
+
+        model_dummy_guid = self.fetch_model_id()
+
+        # set reference-"predicted" dose
+        print("Model ID = ", model_dummy_guid)
+        po.AddOptimizationReferenceDose(MachineLearningModelID=model_dummy_guid,
+                                        MachineLearningParameters={"Name": 'Mimick dose'})
+
+        po.OptimizationReferenceDose.SetDoseValues(Dose=ref_dose, CalculationInfo='ref_dose')
+
+
     def create_run_and_approve_IMPT_plan(self):
 
         self.add_IMPT_plan()
@@ -248,12 +265,20 @@ class CreateIMPTPlan:
         self.set_dose_grid()
         self.set_robustness_parameters()
         self.set_prescription()
+        if self.needs_ref_dose:
+            self.set_reference_predicted_dose()
+
         self.patient.Save()
 
         ml_plan = self.case.TreatmentPlans[self.ml_plan_name]
         ml_beam_set = self.ml_plan.BeamSets[0]
-        ml_beam_set.RunAutomaticPlanning(ModelName=self.ml_model_name, ModelStrategy=self.ml_model_strategy,
+        try:
+            ml_beam_set.RunAutomaticPlanning(ModelName=self.ml_model_name, ModelStrategy=self.ml_model_strategy,
                                         RoiMatches=self.fetch_roi_matches_running())
+        
+        except:
+            print("I couldn't run the automatic planning with model " + self.ml_model_name)
 
         ml_beam_set.SetAutoScaleToPrimaryPrescription(AutoScale=True)
-        ml_plan.ApprovePlanThroughScripting()
+        #ml_plan.ApprovePlanThroughScripting()
+        self.patient.Save()
