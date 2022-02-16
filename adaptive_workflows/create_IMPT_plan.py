@@ -20,11 +20,15 @@ class CreateIMPTPlan:
         self.patient = get_current("Patient")
         self.machine_learning_db = get_current("MachineLearningDB")
         self.ml_models_info = self.machine_learning_db.QueryMachineLearningModelInfo()
-        self.reference_plan = self.case.TreatmentPlans["ML_IMPT_plan"]
+
         self.set_up_error = 0.4
         self.range_error = 0.03
         self.dose_grid = dose_grid
         self.needs_ref_dose = needs_ref_dose
+
+        self.reference_plan = self.case.TreatmentPlans["ML_IMPT_plan"]
+        self.reference_ct_name = "pCT"
+        self.reference_ct = self.case.Examinations[self.reference_ct_name]
 
     def copy_dosegrid_from_plan_to_plan(self):
 
@@ -41,10 +45,15 @@ class CreateIMPTPlan:
         CornerY = dgr.Corner.y
         CornerZ = dgr.Corner.z
 
+        corner={'x': CornerX, 'y': CornerY, 'z': CornerZ}
+        from_FOR = self.reference_plan.PlanOptimizations[0].TreatmentCourseSource.TotalDose.InDoseGrid.FrameOfReference
+        to_FOR = self.case.TreatmentPlans[self.ml_plan_name].PlanOptimizations[0].TreatmentCourseSource.TotalDose.InDoseGrid.FrameOfReference
+        new_corner = self.case.TransformPointFromFoRToFoR(FromFrameOfReference=from_FOR,ToFrameOfReference=to_FOR,Point=corner)
+
         # set dose grid
         beam_set = self.case.TreatmentPlans[self.ml_plan_name].BeamSets[0]
 
-        beam_set.UpdateDoseGrid(Corner={'x': CornerX, 'y': CornerY, 'z': CornerZ},
+        beam_set.UpdateDoseGrid(Corner=new_corner,
                                 VoxelSize={'x': VoxSizeX,
                                         'y': VoxSizeY, 'z': VoxSizeZ},
                                 NumberOfVoxels={'x': NrVoxX, 'y': NrVoxY, 'z': NrVoxZ})
@@ -171,7 +180,9 @@ class CreateIMPTPlan:
                                         'Glnd_Submand_R': "rr_Submandibular_R", 'Cavity_Oral': "rr_Oral_Cavity", 'Musc_Constrict_I': "rr_PharConsInf",
                                         'Musc_Constrict_M': "rr_PharConsMid", 'Musc_Constrict_S': "rr_PharConsSup", 'External': "BODY",
                                         'CTV_High+10mm': "rr_CTV_7000+10mm", 'CTV_Low-CTV_High+10mm': "rr_CTV54.25-CTV70+10mm", 'Esophagus': "rr_Esophagus"}
+            
             return vct_roi_matches_run_planning
+        
         else:
             pct_roi_matches_run_planning = {'CTV_High': "CTV_7000", 'CTV_Low': "CTV_5425",
                                         'Brainstem': "Brainstem", 'SpinalCord': "SpinalCord",
@@ -179,6 +190,7 @@ class CreateIMPTPlan:
                                         'Glnd_Submand_R': "Submandibular_R", 'Cavity_Oral': "Oral_Cavity", 'Musc_Constrict_I': "PharConsInf",
                                         'Musc_Constrict_M': "PharConsMid", 'Musc_Constrict_S': "PharConsSup", 'External': "BODY",
                                         'CTV_High+10mm': "CTV_7000+10mm", 'CTV_Low-CTV_High+10mm': "CTV54.25-CTV70+10mm", 'Esophagus': "Esophagus"}
+            
             return pct_roi_matches_run_planning
     
     def fetch_model_id(self):
@@ -219,8 +231,9 @@ class CreateIMPTPlan:
                                                                 'DisplayName': None, 'MotionSynchronizationSettings': None, 'RespiratoryIntervalTime': None, 'RespiratoryPhaseGatingDutyCycleTimePercentage': None, 'MotionSynchronizationTechniqueType': "Undefined"},
                                                             Custom=None,
                                                             ToleranceTableLabel=None)
+        
         self.ml_plan = ml_plan
-
+        self.fetch_roi_matches_planning()
         self.patient.Save()
         return self.ml_plan
 
@@ -245,7 +258,18 @@ class CreateIMPTPlan:
     
     def set_reference_predicted_dose(self):
         
-        ref_dose = self.reference_plan.TreatmentCourse.TotalDose.DoseValues.DoseData
+        self.DIR_map_reg = self.map_dose_from_pct()
+        #self.fetch_last_dose_eval()
+
+        """
+        self.case.TreatmentDelivery.FractionEvaluations[0].DoseOnExaminations[0].DoseEvaluations[0]
+        fe = self.case.TreatmentDelivery.FractionEvaluations
+        doe = fe.DoseOnExaminations[fe.DoseOnExaminations.Count-1]
+        """
+
+        last_dose_eval = self.case.TreatmentDelivery.FractionEvaluations[0].DoseOnExaminations[0].DoseEvaluations[0]
+        ref_dose = last_dose_eval.DoseValues.DoseData
+
         po = self.case.TreatmentPlans[self.ml_plan_name].PlanOptimizations[0]
 
         model_dummy_guid = self.fetch_model_id()
@@ -256,6 +280,10 @@ class CreateIMPTPlan:
                                         MachineLearningParameters={"Name": 'Mimick dose'})
 
         po.OptimizationReferenceDose.SetDoseValues(Dose=ref_dose, CalculationInfo='ref_dose')
+
+        #delete_evaluation_and_DIR
+        self.case.TreatmentDelivery.FractionEvaluations[0].DoseOnExaminations[0].DoseEvaluations[0].DeleteEvaluationDose()
+        self.case.DeleteDeformableRegistration(StructureRegistration = self.DIR_map_reg)
 
 
     def create_run_and_approve_IMPT_plan(self):
@@ -269,16 +297,55 @@ class CreateIMPTPlan:
             self.set_reference_predicted_dose()
 
         self.patient.Save()
-
-        ml_plan = self.case.TreatmentPlans[self.ml_plan_name]
+        self.ml_plan = self.case.TreatmentPlans[self.ml_plan_name]
         ml_beam_set = self.ml_plan.BeamSets[0]
+
         try:
+            print(self.fetch_roi_matches_running())
             ml_beam_set.RunAutomaticPlanning(ModelName=self.ml_model_name, ModelStrategy=self.ml_model_strategy,
                                         RoiMatches=self.fetch_roi_matches_running())
-        
         except:
             print("I couldn't run the automatic planning with model " + self.ml_model_name)
 
         ml_beam_set.SetAutoScaleToPrimaryPrescription(AutoScale=True)
         #ml_plan.ApprovePlanThroughScripting()
         self.patient.Save()
+
+    def map_dose_from_pct(self):
+
+        #create deformable registration
+        self.case.PatientModel.CreateHybridDeformableRegistrationGroup(RegistrationGroupName="Temp_reg",
+                                                                       ReferenceExaminationName=self.pct_name,
+                                                                       TargetExaminationNames=[self.reference_ct_name],
+                                                                       ControllingRoiNames=[], ControllingPoiNames=[], FocusRoiNames=[],
+                                                                       AlgorithmSettings={'NumberOfResolutionLevels': 3,
+                                                                                          'InitialResolution': {'x': 0.5, 'y': 0.5, 'z': 0.5},
+                                                                                          'FinalResolution': {'x': 0.25, 'y': 0.25, 'z': 0.25},
+                                                                                          'InitialGaussianSmoothingSigma': 2,
+                                                                                          'FinalGaussianSmoothingSigma': 0.333333333333333,
+                                                                                          'InitialGridRegularizationWeight': 1500,
+                                                                                          'FinalGridRegularizationWeight': 1000,
+                                                                                          'ControllingRoiWeight': 0.5, 'ControllingPoiWeight': 0.1,
+                                                                                          'MaxNumberOfIterationsPerResolutionLevel': 1000,
+                                                                                          'ImageSimilarityMeasure': "CorrelationCoefficient",
+                                                                                          'DeformationStrategy': "Default", 'ConvergenceTolerance': 1E-05})
+        
+        for reg in self.case.Registrations:
+            for structure_reg in reg.StructureRegistrations:
+                if structure_reg.Name  == "Temp_reg1":
+                    DIR_map_reg = structure_reg
+
+        #set deformation field to 0
+        data = DIR_map_reg.DeformationMatrix
+        disp_field = len(data)*[0]
+        disp_field = bytearray(disp_field)
+        DIR_map_reg.SetDisplacementField(DisplacementField = disp_field)
+
+        #map dose to converted image
+        dose_to_map = self.reference_plan.TreatmentCourse.TotalDose
+        ref_dose_grid = self.case.TreatmentPlans[self.ml_plan_name].PlanOptimizations[0].OptimizationReferenceDose.InDoseGrid
+
+        self.case.MapDose(FractionNumber=0,SetTotalDoseEstimateReference=False,
+            DoseDistribution=dose_to_map, StructureRegistration=DIR_map_reg,ReferenceDoseGrid=ref_dose_grid)
+
+        return DIR_map_reg
