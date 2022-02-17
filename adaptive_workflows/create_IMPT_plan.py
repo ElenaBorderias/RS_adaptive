@@ -285,7 +285,6 @@ class CreateIMPTPlan:
         self.case.TreatmentDelivery.FractionEvaluations[0].DoseOnExaminations[0].DoseEvaluations[0].DeleteEvaluationDose()
         self.case.DeleteDeformableRegistration(StructureRegistration = self.DIR_map_reg)
 
-
     def create_run_and_approve_IMPT_plan(self):
 
         self.add_IMPT_plan()
