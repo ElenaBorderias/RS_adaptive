@@ -187,3 +187,5 @@ class CreateConvertedImage:
         self.case.PatientModel.RegionsOfInterest['BODY'].CreateExternalGeometry(Examination=self.case.Examinations[self.corrected_cbct_name], ThresholdLevel=-250)
         self.patient.Save()
         print("CorrectedCBCT created successfully")
+
+        return self.corrected_cbct_name

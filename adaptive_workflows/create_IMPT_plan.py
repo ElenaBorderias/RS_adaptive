@@ -259,15 +259,12 @@ class CreateIMPTPlan:
     def set_reference_predicted_dose(self):
         
         self.DIR_map_reg = self.map_dose_from_pct()
-        #self.fetch_last_dose_eval()
 
-        """
-        self.case.TreatmentDelivery.FractionEvaluations[0].DoseOnExaminations[0].DoseEvaluations[0]
-        fe = self.case.TreatmentDelivery.FractionEvaluations
-        doe = fe.DoseOnExaminations[fe.DoseOnExaminations.Count-1]
-        """
+        for doe in self.case.TreatmentDelivery.FractionEvaluations[0].DoseOnExaminations:
+            if doe.OnExaminations.Name == self.pct_name:
+                self.dose_on_examination = doe
 
-        last_dose_eval = self.case.TreatmentDelivery.FractionEvaluations[0].DoseOnExaminations[0].DoseEvaluations[0]
+        last_dose_eval = self.dose_on_examination.DoseEvaluations[self.dose_on_examination.Count-1]
         ref_dose = last_dose_eval.DoseValues.DoseData
 
         po = self.case.TreatmentPlans[self.ml_plan_name].PlanOptimizations[0]
