@@ -153,6 +153,8 @@ class CreateIMPTPlan:
                                                         ComputeExactScenarioDoses=False, NamesOfNonPlanningExaminations=[],
                                                         PatientGeometryUncertaintyType="PerTreatmentCourse",
                                                         PositionUncertaintyType="PerTreatmentCourse", TreatmentCourseScenariosFactor=1000)
+        
+        po.OptimizationParameters.DoseCalculation.ComputeFinalDose = 'True'
 
     def plan_already_exists(self):
 
@@ -362,7 +364,7 @@ class CreateIMPTPlan:
         print("Your plan took ", optimization_time, " seconds to be optimize")
 
         f_results_timing = open(r"C:\\Elena\\results\\Timings_log_files.txt", "w+")
-        f_results_timing.write("Patient : " + str(self.patient.Name) + "\t Plan Name : " + self.ml_model_name + "\t Plan_generation_time : " + str(plan_generation_time) + "\t Optimization_time : " + str(optimization_time) + "\n")
+        f_results_timing.write("Patient : " + str(self.patient.Name) + "\t Plan Name : " + self.ml_plan_name + "\t Plan_generation_time : " + str(plan_generation_time) + "\t Optimization_time : " + str(optimization_time) + "\n")
         f_results_timing.close()
 
         self.ml_beam_set.SetAutoScaleToPrimaryPrescription(AutoScale=True)
@@ -370,3 +372,5 @@ class CreateIMPTPlan:
         self.run_run_eval(0.1,4) #setup error in mm and range error in % 
 
         self.patient.Save()
+
+        return plan_generation_time, optimization_time
