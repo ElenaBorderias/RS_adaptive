@@ -6,6 +6,7 @@ Created on Sat Sep  5 20:34:46 2020
 @author: elena
 """
 from connect import get_current
+import time
 
 class CreateIMPTPlan:
 
@@ -261,51 +262,32 @@ class CreateIMPTPlan:
         self.DIR_map_reg = self.map_dose_from_pct()
 
         for doe in self.case.TreatmentDelivery.FractionEvaluations[0].DoseOnExaminations:
-            if doe.OnExaminations.Name == self.pct_name:
+            if doe.OnExamination.Name == self.pct_name:
                 self.dose_on_examination = doe
 
-        last_dose_eval = self.dose_on_examination.DoseEvaluations[self.dose_on_examination.Count-1]
-        ref_dose = last_dose_eval.DoseValues.DoseData
+        last_dose_eval = self.dose_on_examination.DoseEvaluations[self.dose_on_examination.DoseEvaluations.Count-1]
+        self.ref_dose = last_dose_eval.DoseValues.DoseData
 
         po = self.case.TreatmentPlans[self.ml_plan_name].PlanOptimizations[0]
 
         model_dummy_guid = self.fetch_model_id()
-
+       
         # set reference-"predicted" dose
         print("Model ID = ", model_dummy_guid)
         po.AddOptimizationReferenceDose(MachineLearningModelID=model_dummy_guid,
-                                        MachineLearningParameters={"Name": 'Mimick dose'})
+                                        MachineLearningModelVersion=0,
+                                        MachineLearningParameters={"Name": 'Mimick dose', 'Strategy': "IMPT Demo", 
+                                        'RoiMatches': self.fetch_roi_matches_planning(), 
+                                        'BeamSet': self.ml_plan_name, 'HasRobustRois': "True", 'Approved': "False", 'ApprovedBy': "", 'ApprovalDate': None })
+        #'BeamSet': "\"2_Mim_CBCT 01\""
 
-        po.OptimizationReferenceDose.SetDoseValues(Dose=ref_dose, CalculationInfo='ref_dose')
 
-        #delete_evaluation_and_DIR
-        self.case.TreatmentDelivery.FractionEvaluations[0].DoseOnExaminations[0].DoseEvaluations[0].DeleteEvaluationDose()
+        self.case.TreatmentPlans[self.ml_plan_name].AutomaticPlanningPreprocessing()
+        po.OptimizationReferenceDose.SetDoseValues(Dose=self.ref_dose, CalculationInfo='ref_dose')
+
+        #delete_evaluation_and_DIR 
+        last_dose_eval.DeleteEvaluationDose()
         self.case.DeleteDeformableRegistration(StructureRegistration = self.DIR_map_reg)
-
-    def create_run_and_approve_IMPT_plan(self):
-
-        self.add_IMPT_plan()
-        self.add_beams_to_plan()
-        self.set_dose_grid()
-        self.set_robustness_parameters()
-        self.set_prescription()
-        if self.needs_ref_dose:
-            self.set_reference_predicted_dose()
-
-        self.patient.Save()
-        self.ml_plan = self.case.TreatmentPlans[self.ml_plan_name]
-        ml_beam_set = self.ml_plan.BeamSets[0]
-
-        try:
-            print(self.fetch_roi_matches_running())
-            ml_beam_set.RunAutomaticPlanning(ModelName=self.ml_model_name, ModelStrategy=self.ml_model_strategy,
-                                        RoiMatches=self.fetch_roi_matches_running())
-        except:
-            print("I couldn't run the automatic planning with model " + self.ml_model_name)
-
-        ml_beam_set.SetAutoScaleToPrimaryPrescription(AutoScale=True)
-        #ml_plan.ApprovePlanThroughScripting()
-        self.patient.Save()
 
     def map_dose_from_pct(self):
 
@@ -345,3 +327,43 @@ class CreateIMPTPlan:
             DoseDistribution=dose_to_map, StructureRegistration=DIR_map_reg,ReferenceDoseGrid=ref_dose_grid)
 
         return DIR_map_reg
+    
+    def run_run_eval(self,setup_error_eval,range_error_eval):
+
+        self.ml_beam_set.CreateRadiationSetScenarioGroup(Name="rob_eval_28sc", UseIsotropicPositionUncertainty=False,
+                                                    PositionUncertaintySuperior=setup_error_eval, PositionUncertaintyInferior=setup_error_eval, PositionUncertaintyPosterior=setup_error_eval,
+                                                    PositionUncertaintyAnterior=setup_error_eval, PositionUncertaintyLeft=setup_error_eval, PositionUncertaintyRight=setup_error_eval,
+                                                    PositionUncertaintyFormation="AxesAndDiagonalEndPoints", PositionUncertaintyList=None,
+                                                    DensityUncertaintyPercent=range_error_eval, NumberOfDensityDiscretizationPoints=2, ComputeScenarioDosesAfterGroupCreation=False)
+
+    def create_run_and_approve_IMPT_plan(self):
+
+        self.add_IMPT_plan()
+        self.add_beams_to_plan()
+        self.set_dose_grid()
+        self.set_robustness_parameters()
+        self.set_prescription()
+        if self.needs_ref_dose:
+            self.set_reference_predicted_dose()
+
+        self.patient.Save()
+        self.ml_plan = self.case.TreatmentPlans[self.ml_plan_name]
+        self.ml_beam_set = self.ml_plan.BeamSets[0]
+
+        start_time = time.time()
+        try:
+            self.ml_beam_set.RunAutomaticPlanning(ModelName=self.ml_model_name, ModelStrategy=self.ml_model_strategy,
+                                        RoiMatches=self.fetch_roi_matches_running())
+        except:
+            print("I couldn't run the automatic planning with model " + self.ml_model_name)
+        optimization_time = time.time() - start_time
+
+        f_results_timing = open(r"C:\\Elena\\results\\Timings_log_files.txt", "w+")
+        f_results_timing.write("Patient : " + str(self.patient.Name) + "\t Plan Name : " + self.ml_model_name + "\t Optimization_time : " + str(optimization_time) + "\n")
+        f_results_timing.close()
+
+        self.ml_beam_set.SetAutoScaleToPrimaryPrescription(AutoScale=True)
+
+        self.run_run_eval(0.1,4) #setup error in mm and range error in % 
+
+        self.patient.Save()
