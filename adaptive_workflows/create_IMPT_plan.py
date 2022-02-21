@@ -337,7 +337,7 @@ class CreateIMPTPlan:
                                                     DensityUncertaintyPercent=range_error_eval, NumberOfDensityDiscretizationPoints=2, ComputeScenarioDosesAfterGroupCreation=False)
 
     def create_run_and_approve_IMPT_plan(self):
-
+        start_time = time.time()
         self.add_IMPT_plan()
         self.add_beams_to_plan()
         self.set_dose_grid()
@@ -345,6 +345,7 @@ class CreateIMPTPlan:
         self.set_prescription()
         if self.needs_ref_dose:
             self.set_reference_predicted_dose()
+        plan_generation_time = time.time() - start_time
 
         self.patient.Save()
         self.ml_plan = self.case.TreatmentPlans[self.ml_plan_name]
@@ -358,8 +359,10 @@ class CreateIMPTPlan:
             print("I couldn't run the automatic planning with model " + self.ml_model_name)
         optimization_time = time.time() - start_time
 
+        print("Your plan took ", optimization_time, " seconds to be optimize")
+
         f_results_timing = open(r"C:\\Elena\\results\\Timings_log_files.txt", "w+")
-        f_results_timing.write("Patient : " + str(self.patient.Name) + "\t Plan Name : " + self.ml_model_name + "\t Optimization_time : " + str(optimization_time) + "\n")
+        f_results_timing.write("Patient : " + str(self.patient.Name) + "\t Plan Name : " + self.ml_model_name + "\t Plan_generation_time : " + str(plan_generation_time) + "\t Optimization_time : " + str(optimization_time) + "\n")
         f_results_timing.close()
 
         self.ml_beam_set.SetAutoScaleToPrimaryPrescription(AutoScale=True)
