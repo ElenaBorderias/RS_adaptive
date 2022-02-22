@@ -154,6 +154,7 @@ class CreateIMPTPlan:
                                                         PatientGeometryUncertaintyType="PerTreatmentCourse",
                                                         PositionUncertaintyType="PerTreatmentCourse", TreatmentCourseScenariosFactor=1000)
         
+        po.OptimizationParameters.DoseCalculation.ComputeFinalDose = 'True'
 
     def plan_already_exists(self):
 
@@ -280,14 +281,15 @@ class CreateIMPTPlan:
                                         MachineLearningParameters={"Name": 'Mimick dose', 'Strategy': "IMPT Demo", 
                                         'RoiMatches': self.fetch_roi_matches_planning(), 
                                         'BeamSet': self.ml_plan_name, 'HasRobustRois': "True", 'Approved': "False", 'ApprovedBy': "", 'ApprovalDate': None })
-       
+        #'BeamSet': "\"2_Mim_CBCT 01\""
+
+
         self.case.TreatmentPlans[self.ml_plan_name].AutomaticPlanningPreprocessing()
         po.OptimizationReferenceDose.SetDoseValues(Dose=self.ref_dose, CalculationInfo='ref_dose')
 
         #delete_evaluation_and_DIR 
         last_dose_eval.DeleteEvaluationDose()
-
-        #self.case.DeleteDeformableRegistration(StructureRegistration = self.DIR_map_reg)
+        self.case.DeleteDeformableRegistration(StructureRegistration = self.DIR_map_reg)
 
     def map_dose_from_pct(self):
 
@@ -336,8 +338,6 @@ class CreateIMPTPlan:
                                                     PositionUncertaintyFormation="AxesAndDiagonalEndPoints", PositionUncertaintyList=None,
                                                     DensityUncertaintyPercent=range_error_eval, NumberOfDensityDiscretizationPoints=2, ComputeScenarioDosesAfterGroupCreation=False)
 
-        self.case.TreatmentDelivery.RadiationSetScenarioGroups[self.case.TreatmentDelivery.RadiationSetScenarioGroups.Count-1].ComputeScenarioGroupDoseValues()
-
     def create_run_and_approve_IMPT_plan(self):
         start_time = time.time()
         self.add_IMPT_plan()
@@ -361,7 +361,6 @@ class CreateIMPTPlan:
                                         RoiMatches=self.fetch_roi_matches_running())
         except:
             print("I couldn't run the automatic planning with model " + self.ml_model_name)
-
         optimization_time = time.time() - start_time
 
         print("Your plan took ", optimization_time, " seconds to be optimize")

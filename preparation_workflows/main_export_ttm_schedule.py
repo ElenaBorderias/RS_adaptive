@@ -2,13 +2,15 @@
 from connect import get_current
 from create_IMPT_plan import CreateIMPTPlan
 from create_virtual_ct_from_cbct import CreateConvertedImage
-from evaluation import NeedsAdaptation
+from evaluation import NeedsAdaptation, EvaluateClinicalPlan
+import pandas as pd
 
 def main():
 
     pct_name = "pCT"
     reference_plan_name = "ML_IMPT_plan"
 
+    patient = get_current("Patient")
     case = get_current("Case")
     cbct_names_list = []
 
@@ -18,7 +20,7 @@ def main():
             cbct_names_list.append(exam)
     
     run_1_auto_planning = False
-    run_2_mimicking_plan = True
+    run_2_mimicking_plan = False
 
     oars_model = [r"Brainstem", r"SpinalCord",
                   r"Parotid_R", r"Parotid_L", r"Submandibular_L", r"Submandibular_R",
@@ -29,9 +31,10 @@ def main():
 
     model_rois = targets_model + oars_model
 
-    cbct_names_list = ["CBCT 02"]
+    df = pd.DataFrame(columns = ["#Fraction","CBCT_name","Needs_adaptation", "D98_CTV_5425","D98_CTV_7000"])
+    cbct_names_list = ['CBCT 01','CBCT 02','CBCT 03']
 
-    for cbct_name in cbct_names_list:
+    for i,cbct_name in enumerate(cbct_names_list):
 
         case.Examinations[cbct_name].ImportFraction = int(cbct_name[-2:])
         converter = CreateConvertedImage(pct_name, cbct_name, model_rois)
@@ -41,23 +44,18 @@ def main():
         else:
             adapt_image_name = "Corrected " + cbct_name
         
-        init_adapt = NeedsAdaptation(adapt_image_name, reference_plan_name)
-
-        if init_adapt.check_adaptation_needed():
+        #init_eval = EvaluateClinicalPlan(adapt_image_name, reference_plan_name)
+        #init_eval.map_rois_deformably()
         
-            if run_1_auto_planning:
-            #Prediction + Mimicking
-                auto_plan_name = "1_Auto_" + cbct_names_list[0]
-                auto_planning = CreateIMPTPlan(adapt_image_name, auto_plan_name, "RSL_IMPT_conv_img", "IMPT Demo", "Default", False)
-                auto_planning.create_run_and_approve_IMPT_plan()
-            
-            if run_2_mimicking_plan:
-            #Clinical dose + Mimicking
-                mimick_plan_name = "2_Mim_" + cbct_names_list[0]
-                mimicking_from_clinical = CreateIMPTPlan(adapt_image_name, mimick_plan_name, "Only_mimicking_conv_img", "IMPT Demo", "Copy_from_plan", True)
-                mimicking_from_clinical.create_run_and_approve_IMPT_plan()
+        init_adapt = NeedsAdaptation(adapt_image_name, reference_plan_name)
+        adapt, ctv_low_coverage, ctv_high_coverage = init_adapt.check_adaptation_needed()
 
-            #Dose deformation + Mimicking
+        df = df.append({'#Fraction' : int(cbct_name[-2:]), 'CBCT_name' : adapt_image_name, 'Needs_adaptation' : adapt, 'D98_CTV_5425':ctv_low_coverage, 'D98_CTV_7000': ctv_high_coverage},ignore_index = True)
+        print(df)
+
+    export_file = "C:\\Elena\\results\\" + patient.Name + "_ttmt_schedule.xlsx"
+    df.to_excel(export_file, engine='openpyxl')
+    
 
 if __name__ == "__main__":
     main()
