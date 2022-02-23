@@ -41,6 +41,8 @@ for patient in listdir(patient_path):
                 print('hello')
                 rename(join(patient_path, patient, 'CBCT', cbct_row['uid']), join(patient_path, patient, 'CBCT', str(i).zfill(2) + '_' + cbct_row['uid']))
         
+        
+
 # =============================================================================
 # for patient in listdir(patient_path):
 #     anon_data_pat = anon_data[anon_data["Anon name"] == patient and anon_data["Manufacturer"] == 'Varian  Medical System' and anon_data[]]

@@ -1,0 +1,5 @@
+{
+    "python.analysis.extraPaths": [
+        "./adaptive_workflows"
+    ]
+}
