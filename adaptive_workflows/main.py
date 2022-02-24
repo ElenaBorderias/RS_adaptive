@@ -18,7 +18,7 @@ def main():
             cbct_names_list.append(exam)
     
     run_1_auto_planning = False
-    run_2_mimicking_plan = True
+    run_2_mimicking_plan = False
 
     oars_model = [r"Brainstem", r"SpinalCord",
                   r"Parotid_R", r"Parotid_L", r"Submandibular_L", r"Submandibular_R",
@@ -28,8 +28,6 @@ def main():
     targets_model = [r"CTV_5425", r"CTV_7000", r"CTV_all", r"CTVp_7000", r"CTV_7000+10mm", r"CTV54.25-CTV70+10mm"]
 
     model_rois = targets_model + oars_model
-
-    cbct_names_list = ["CBCT 02"]
 
     for cbct_name in cbct_names_list:
 
@@ -48,13 +46,13 @@ def main():
             if run_1_auto_planning:
             #Prediction + Mimicking
                 auto_plan_name = "1_Auto_" + cbct_names_list[0]
-                auto_planning = CreateIMPTPlan(adapt_image_name, auto_plan_name, "RSL_IMPT_conv_img", "IMPT Demo", "Default", False)
+                auto_planning = CreateIMPTPlan(adapt_image_name, auto_plan_name, "RSL_IMPT_conv_img", "IMPT Demo", "DIR","Default", False)
                 auto_planning.create_run_and_approve_IMPT_plan()
             
             if run_2_mimicking_plan:
             #Clinical dose + Mimicking
                 mimick_plan_name = "2_Mim_" + cbct_names_list[0]
-                mimicking_from_clinical = CreateIMPTPlan(adapt_image_name, mimick_plan_name, "Only_mimicking_conv_img", "IMPT Demo", "Copy_from_plan", True)
+                mimicking_from_clinical = CreateIMPTPlan(adapt_image_name, mimick_plan_name, "Only_mimicking_conv_img", "IMPT Demo", "RigidReg","Copy_from_plan", True)
                 mimicking_from_clinical.create_run_and_approve_IMPT_plan()
 
             #Dose deformation + Mimicking

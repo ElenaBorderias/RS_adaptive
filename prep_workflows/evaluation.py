@@ -69,7 +69,16 @@ class EvaluateClinicalPlan:
         self.ctv_names = ["CTVnR_5425", "CTVnL_5425", "CTVp_5425", "CTVp_7000", "CTV_5425", "CTV_7000", "CTV_all"]
 
         self.oar_names_def =["Mandible", "Esophagus", "SpinalCord", "Parotid_R", "Parotid_L", "Larynx", "Submandibular_L", "Submandibular_R", "Brainstem",
-                            "Oral_Cavity", "Cochlea_R", "Cochlea_L", "Retina_R", "Retina_L", "PharConsSup", "PharConsMid", "PharConsInf"]
+                            "Oral_Cavity", "PharConsSup", "PharConsMid", "PharConsInf"]
+        
+        other_rois = ["Cochlea_R", "Cochlea_L", "Retina_R", "Retina_L", "artifact", "NS_Contrast"]
+
+        all_rois = self.case.PatientModel.StructureSets["pCT"].RoiGeometries
+        roi_names = [x.OfRoi.Name for x in all_rois]
+
+        for roi in other_rois:
+            if roi in roi_names:
+                self.oar_names_def.append(roi)
 
         self.oar_names_predict =  []
 

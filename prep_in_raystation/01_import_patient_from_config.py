@@ -7,7 +7,7 @@ from numpy import imag
 from connect import get_current, CompositeAction
 
 patients_path = "C:\\Patients"
-patient_list = ["ANON6"]
+patient_list = ["ANON43"]
 imaging_system = "Generic CT"
 
 patient_db = get_current('PatientDB')
@@ -35,7 +35,6 @@ for patient in listdir(patients_path):
         pct = case.Examinations['pCT']
         pct.EquipmentInfo.SetImagingSystemReference(
             ImagingSystemName=imaging_system)
-        pct.DeleteLaserExportReferencePoint()
 
         db_patient.Save()
 
@@ -54,7 +53,6 @@ for patient in listdir(patients_path):
                 str(i).zfill(2)
             case.Examinations[examination_index].EquipmentInfo.SetImagingSystemReference(
                 ImagingSystemName=imaging_system)
-            case.Examinations[examination_index].DeleteLaserExportReferencePoint()
 
             db_patient.Save()
             i = i+1

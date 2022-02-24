@@ -151,6 +151,22 @@ class CreateConvertedImage:
             print(sorted(rois_to_copy))
             print("Your are missing some crucial rr_ROIS")
 
+    def map_rr_rois_to_cbct(self):
+        examination = self.case.Examinations[self.pct_name]
+        all_rois = self.case.PatientModel.StructureSets[examination.Name].RoiGeometries
+        roi_names = [x.OfRoi.Name for x in all_rois]
+        rr_rois = []
+        for roi in roi_names:
+            if roi.startswith('rr'):
+                rr_rois.append(roi)
+
+        self.case.PatientModel.CopyRoiGeometries(SourceExamination=self.case.Examinations[self.pct_name], 
+                                                TargetExaminationNames=[self.cbct_name], 
+                                                RoiNames=rr_rois, 
+                                                ImageRegistrationNames=[], 
+                                                TargetExaminationNamesToSkipAddedReg=[self.cbct_name])
+
+
     def initial_structures(self):
         # 1. Imagining system
         self.set_callibration_curve_cbct()
@@ -160,6 +176,8 @@ class CreateConvertedImage:
 
         # 3. Existing rigid registration between pct and cbct
         self.rigid_registration()
+
+        #3.5 mapp rr_rois
 
         # 4. Existing DIR between the two images
         self.deformable_image_registration()

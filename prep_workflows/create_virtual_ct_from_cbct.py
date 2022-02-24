@@ -112,33 +112,6 @@ class CreateConvertedImage:
 
         self.patient.Save()
 
-    def initial_structures(self):
-        # 1. Imagining system
-        self.set_callibration_curve_cbct()
-
-        # 2. External rois in both image_names
-        self.check_and_create_external_contour()
-
-        # 3. Existing rigid registration between pct and cbct
-        self.rigid_registration()
-
-        # 4. Existing DIR between the two images
-        self.deformable_image_registration()
-
-        # 5. Create FOV roi for cbct
-        self.create_FOV_roi()
-    
-    def create_vct(self):
-
-        self.initial_structures()
-        self.case.CreateNewVirtualCt(VirtualCtName=self.vct_name, ReferenceExaminationName=self.pct_name,
-                            TargetExaminationName=self.cbct_name, DeformableRegistrationName=self.dir_name,
-                            FovRoiName=self.fov_roi_name)
-
-        self.case.PatientModel.RegionsOfInterest['BODY'].CreateExternalGeometry(Examination=self.case.Examinations[self.vct_name], ThresholdLevel=-250)
-        self.patient.Save()
-        print("VirtualCT created successfully")
-
     def check_and_copy_rois_to_cbct(self):
 
         all_rois=self.case.PatientModel.StructureSets[self.pct_name].RoiGeometries
@@ -177,6 +150,52 @@ class CreateConvertedImage:
             print(sorted(rr_rois))
             print(sorted(rois_to_copy))
             print("Your are missing some crucial rr_ROIS")
+
+    def map_rr_rois_to_cbct(self):
+        examination = self.case.Examinations[self.pct_name]
+        all_rois = self.case.PatientModel.StructureSets[examination.Name].RoiGeometries
+        roi_names = [x.OfRoi.Name for x in all_rois]
+        rr_rois = []
+        for roi in roi_names:
+            if roi.startswith('rr'):
+                rr_rois.append(roi)
+
+        self.case.PatientModel.CopyRoiGeometries(SourceExamination=self.case.Examinations[self.pct_name], 
+                                                TargetExaminationNames=[self.cbct_name], 
+                                                RoiNames=rr_rois, 
+                                                ImageRegistrationNames=[], 
+                                                TargetExaminationNamesToSkipAddedReg=[self.cbct_name])
+
+
+    def initial_structures(self):
+        # 1. Imagining system
+        self.set_callibration_curve_cbct()
+
+        # 2. External rois in both image_names
+        self.check_and_create_external_contour()
+
+        # 3. Existing rigid registration between pct and cbct
+        self.rigid_registration()
+
+        #3.5 mapp rr_rois
+        self.map_rr_rois_to_cbct()
+
+        # 4. Existing DIR between the two images
+        self.deformable_image_registration()
+
+        # 5. Create FOV roi for cbct
+        self.create_FOV_roi()
+    
+    def create_vct(self):
+
+        self.initial_structures()
+        self.case.CreateNewVirtualCt(VirtualCtName=self.vct_name, ReferenceExaminationName=self.pct_name,
+                            TargetExaminationName=self.cbct_name, DeformableRegistrationName=self.dir_name,
+                            FovRoiName=self.fov_roi_name)
+
+        self.case.PatientModel.RegionsOfInterest['BODY'].CreateExternalGeometry(Examination=self.case.Examinations[self.vct_name], ThresholdLevel=-250)
+        self.patient.Save()
+        print("VirtualCT created successfully")
 
     def create_corrected_cbct(self):
 
