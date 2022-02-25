@@ -41,10 +41,13 @@ def main():
         create_adaptImage_time = 0
         if "Corrected " + cbct_name not in exam_names:
             start_time = time.time()
+            adapt_image_name = converter.create_corrected_cbct()
+            """
             try: 
                 adapt_image_name = converter.create_corrected_cbct()
             except:
                 print("I couldnt generate the CBCT")
+            """
             create_adaptImage_time = time.time() - start_time
         else:
             adapt_image_name = "Corrected " + cbct_name
