@@ -80,7 +80,7 @@ class CreateConvertedImage:
     def check_and_create_external_contour(self):
         if not self.case.PatientModel.StructureSets[self.cbct_name].RoiGeometries["BODY"].HasContours():
             self.case.PatientModel.RegionsOfInterest['BODY'].CreateExternalGeometry(
-                Examination=self.case.Examinations[self.cbct_name], ThresholdLevel=-250)
+                Examination=self.case.Examinations[self.cbct_name], ThresholdLevel=-450)
 
     def create_FOV_roi(self):
 
@@ -203,11 +203,13 @@ class CreateConvertedImage:
         self.case.CreateNewCorrectedCbct(CorrectedCbctName=self.corrected_cbct_name, ReferenceExaminationName=self.pct_name, 
                                 TargetExaminationName=self.cbct_name, FovRoiName=self.fov_roi_name, 
                                 DeformableRegistrationName=self.dir_name)
-        self.case.PatientModel.RegionsOfInterest['BODY'].CreateExternalGeometry(Examination=self.case.Examinations[self.corrected_cbct_name], ThresholdLevel=-250)
+        self.case.PatientModel.RegionsOfInterest['BODY'].CreateExternalGeometry(Examination=self.case.Examinations[self.corrected_cbct_name], ThresholdLevel=-450)
         self.case.PatientModel.StructureSets[self.corrected_cbct_name].SimplifyContours(RoiNames=["BODY"], RemoveHoles3D=True, RemoveSmallContours=True, AreaThreshold=None, ReduceMaxNumberOfPointsInContours=False, MaxNumberOfPoints=None, CreateCopyOfRoi=False, ResolveOverlappingContours=False)
+        self.patient.Save()
 
         if "artifact" in self.roi_names:
             self.case.PatientModel.RegionsOfInterest['BODY'].CreateAlgebraGeometry(Examination=self.case.Examinations[self.corrected_cbct_name], Algorithm="Auto", ExpressionA={ 'Operation': "Union", 'SourceRoiNames': ["BODY"], 'MarginSettings': { 'Type': "Expand", 'Superior': 0, 'Inferior': 0, 'Anterior': 0, 'Posterior': 0, 'Right': 0, 'Left': 0 } }, ExpressionB={ 'Operation': "Union", 'SourceRoiNames': ["rr_artifact","artifact"], 'MarginSettings': { 'Type': "Expand", 'Superior': 0, 'Inferior': 0, 'Anterior': 0, 'Posterior': 0, 'Right': 0, 'Left': 0 } }, ResultOperation="Union", ResultMarginSettings={ 'Type': "Expand", 'Superior': 0, 'Inferior': 0, 'Anterior': 0, 'Posterior': 0, 'Right': 0, 'Left': 0 })
+            self.case.PatientModel.StructureSets[self.corrected_cbct_name].SimplifyContours(RoiNames=["BODY"], RemoveHoles3D=True, RemoveSmallContours=True, AreaThreshold=None, ReduceMaxNumberOfPointsInContours=False, MaxNumberOfPoints=None, CreateCopyOfRoi=False, ResolveOverlappingContours=False)
 
         self.patient.Save()
         print("CorrectedCBCT created successfully")

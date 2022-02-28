@@ -31,7 +31,7 @@ def main():
 
     model_rois = targets_model + oars_model
 
-    df = pd.DataFrame(columns = ["#Fraction","CBCT_name","Needs_adaptation", "D98_CTV_5425","D98_CTV_7000","t_CreateAdaptImage","t_DeformableMapping"])
+    df = pd.DataFrame(columns = ["#Fraction","CBCT_name","Needs_adaptation", "Needs_adaptation_0_1","D98_CTV_5425","D98_CTV_7000","t_CreateAdaptImage","t_DeformableMapping"])
 
     for i,cbct_name in enumerate(cbct_names_list):
 
@@ -59,8 +59,13 @@ def main():
 
         init_adapt = NeedsAdaptation(adapt_image_name, reference_plan_name)
         adapt, ctv_low_coverage, ctv_high_coverage = init_adapt.check_adaptation_needed()
+        
+        if adapt[0]:
+            adapt_bin = 1
+        else:
+            adapt_bin = 0
 
-        df = df.append({'#Fraction' : int(cbct_name[-2:]), 'CBCT_name' : adapt_image_name, 'Needs_adaptation' : adapt, 'D98_CTV_5425':ctv_low_coverage, 'D98_CTV_7000': ctv_high_coverage, 't_CreateAdaptImage': create_adaptImage_time, 't_DeformableMapping': deformable_mapping_time },ignore_index = True)
+        df = df.append({'#Fraction' : int(cbct_name[-2:]), 'CBCT_name' : adapt_image_name, 'Needs_adaptation' : adapt,'Needs_adaptation_0_1': adapt_bin, 'D98_CTV_5425':ctv_low_coverage, 'D98_CTV_7000': ctv_high_coverage, 't_CreateAdaptImage': create_adaptImage_time, 't_DeformableMapping': deformable_mapping_time },ignore_index = True)
         print(df)
 
         patient.Save()

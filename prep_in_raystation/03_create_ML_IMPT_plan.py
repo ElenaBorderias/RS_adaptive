@@ -153,6 +153,7 @@ def set_robustness_parameters(plan_name, setup_error, range_error):
 patient = get_current("Patient")
 case = get_current("Case")
 machine_learning_db = get_current("MachineLearningDB")
+db = get_current("PatientDB")
 ml_models_info = machine_learning_db.QueryMachineLearningModelInfo()
 
 all_oars = ["Parotid_L", "Parotid_R",
@@ -237,3 +238,13 @@ if run_ml_plan:
                                     RoiMatches=roi_matches_run_planning)
     
     ml_beam_set.SetAutoScaleToPrimaryPrescription(AutoScale=True)
+
+    patient.Save()
+
+    retval_0 = ml_beam_set.CreateRadiationSetScenarioGroup(Name="Rob_eval_28sc", UseIsotropicPositionUncertainty=False, PositionUncertaintySuperior=0.4, PositionUncertaintyInferior=0.4, PositionUncertaintyPosterior=0.4, PositionUncertaintyAnterior=0.4, PositionUncertaintyLeft=0.4, PositionUncertaintyRight=0.4, PositionUncertaintyFormation="AxesAndDiagonalEndPoints", PositionUncertaintyList=None, DensityUncertaintyPercent=3, NumberOfDensityDiscretizationPoints=2, ComputeScenarioDosesAfterGroupCreation=False)
+
+    retval_0.ComputeScenarioGroupDoseValues()
+
+    ml_plan.TreatmentCourse.EvaluationSetup.ApplyClinicalGoalTemplate(Template=db.TemplateTreatmentOptimizations['CG_HAN_MIRO'])
+    #plan.TreatmentCourse.EvaluationSetup.ApplyClinicalGoalTemplate(Template=db.TemplateTreatmentOptimizations['CG_HAN_MIRO'], AssociatedRoisAndPois={ 'BODY': , 'Brainstem': , 'CTVnR_5425': , 'CTVnL_5425': , 'CTV_5425': , 'CTVp_5425': , 'CTVp_7000': , 'CTV_7000': , 'SpinalCord': , 'Esophagus': , 'Mandible': , 'Oral_Cavity': , 'Parotid_R': , 'Parotid_L': , 'PharConsSup': , 'PharConsMid': , 'PharConsInf': , 'Submandibular_L': , 'Submandibular_R':  })
+
