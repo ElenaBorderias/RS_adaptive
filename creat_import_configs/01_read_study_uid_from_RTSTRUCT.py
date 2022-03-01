@@ -3,16 +3,18 @@ import shutil
 from os import chdir, listdir
 from os.path import isdir, join
 
-import env
+_f = open('creat_import_configs/env.json')
+properties = json.load(_f)
+_f.close()
 
 from pydicom import read_file
 
-patients_path = env.properties['patientsFolder']
+patients_path = properties['patientsFolder']
 chdir(patients_path)
 
 patient_config = {}
 for patient in listdir():
-    if (isdir(patient) and patient in env.properties['patientFilter']):
+    if (isdir(patient) and patient in properties['patientFilter']):
         patient_config[patient] = {}
         for file in listdir(patient):
             if "RTSTRUCT" in file:

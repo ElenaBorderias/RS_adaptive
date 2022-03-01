@@ -10,7 +10,7 @@ import time
 
 class CreateIMPTPlan:
 
-    def __init__(self, pct_name, plan_name, model_name, model_strategy, dose_grid,needs_ref_dose):
+    def __init__(self, pct_name, plan_name, model_name, model_strategy, map_rois_strategy, dose_grid,needs_ref_dose):
 
         self.pct_name = pct_name
         self.ml_plan_name = plan_name
@@ -22,6 +22,8 @@ class CreateIMPTPlan:
         self.machine_learning_db = get_current("MachineLearningDB")
         self.ml_models_info = self.machine_learning_db.QueryMachineLearningModelInfo()
 
+        self.map_rois_strategy = map_rois_strategy # "DIR", "RigidReg"
+
         self.set_up_error = 0.4
         self.range_error = 0.03
         self.dose_grid = dose_grid
@@ -30,6 +32,7 @@ class CreateIMPTPlan:
         self.reference_plan = self.case.TreatmentPlans["ML_IMPT_plan"]
         self.reference_ct_name = "pCT"
         self.reference_ct = self.case.Examinations[self.reference_ct_name]
+    
 
     def copy_dosegrid_from_plan_to_plan(self):
 
@@ -88,7 +91,7 @@ class CreateIMPTPlan:
         plan = self.case.TreatmentPlans[self.ml_plan_name]
         beam_set = plan.BeamSets[0]
 
-        if self.pct_name.startswith("vCT") or self.pct_name.startswith("Corrected"):
+        if self.map_rois_strategy == "RigidReg":
             iso_data = self.case.PatientModel.StructureSets[self.pct_name].RoiGeometries["rr_CTV_all"].GetCenterOfRoi()
         else:
             iso_data = self.case.PatientModel.StructureSets[self.pct_name].RoiGeometries["CTV_all"].GetCenterOfRoi()
@@ -154,7 +157,6 @@ class CreateIMPTPlan:
                                                         PatientGeometryUncertaintyType="PerTreatmentCourse",
                                                         PositionUncertaintyType="PerTreatmentCourse", TreatmentCourseScenariosFactor=1000)
         
-
     def plan_already_exists(self):
 
         all_plans = self.case.TreatmentPlans
@@ -166,7 +168,7 @@ class CreateIMPTPlan:
 
     def fetch_roi_matches_planning(self):
 
-        if self.pct_name.startswith("vCT") or self.pct_name.startswith("Corrected"):
+        if self.map_rois_strategy == "RigidReg":
             vct_matches_planning = "{\"CTV_High\":\"rr_CTV_7000\",\"CTV_Low\":\"rr_CTV_5425\",\"Brainstem\":\"rr_Brainstem\",\"SpinalCord\":\"rr_SpinalCord\",\"Parotid_L\":\"rr_Parotid_L\",\"Parotid_R\":\"rr_Parotid_R\",\"Glnd_Submand_L\":\"rr_Submandibular_L\",\"Glnd_Submand_R\":\"rr_Submandibular_R\",\"Cavity_Oral\":\"rr_Oral_Cavity\",\"Musc_Constrict_I\":\"rr_PharConsInf\",\"Musc_Constrict_M\":\"rr_PharConsMid\",\"Musc_Constrict_S\":\"rr_PharConsSup\",\"External\":\"BODY\",\"rr_CTV_High+10mm\":\"rr_CTV70+10mm\",\"CTV_Low-CTV_High+10mm\":\"rr_CTV54.25-CTV70+10mm\",\"Esophagus\":\"rr_Esophagus\"}"
             return  vct_matches_planning
         else:
@@ -175,15 +177,15 @@ class CreateIMPTPlan:
 
     def fetch_roi_matches_running(self):
         
-        if self.pct_name.startswith("vCT") or self.pct_name.startswith("Corrected"):
-            vct_roi_matches_run_planning = {'CTV_High': "rr_CTV_7000", 'CTV_Low': "rr_CTV_5425",
+        if self.map_rois_strategy == "RigidReg":
+            pct_roi_matches_run_planning = {'CTV_High': "rr_CTV_7000", 'CTV_Low': "rr_CTV_5425",
                                         'Brainstem': "rr_Brainstem", 'SpinalCord': "rr_SpinalCord",
                                         'Parotid_L': "rr_Parotid_L", 'Parotid_R': "rr_Parotid_R", 'Glnd_Submand_L': "rr_Submandibular_L",
                                         'Glnd_Submand_R': "rr_Submandibular_R", 'Cavity_Oral': "rr_Oral_Cavity", 'Musc_Constrict_I': "rr_PharConsInf",
                                         'Musc_Constrict_M': "rr_PharConsMid", 'Musc_Constrict_S': "rr_PharConsSup", 'External': "BODY",
                                         'CTV_High+10mm': "rr_CTV_7000+10mm", 'CTV_Low-CTV_High+10mm': "rr_CTV54.25-CTV70+10mm", 'Esophagus': "rr_Esophagus"}
             
-            return vct_roi_matches_run_planning
+            return pct_roi_matches_run_planning
         
         else:
             pct_roi_matches_run_planning = {'CTV_High': "CTV_7000", 'CTV_Low': "CTV_5425",
@@ -250,7 +252,7 @@ class CreateIMPTPlan:
 
     def set_prescription(self):
 
-        if self.pct_name.startswith("vCT") or self.pct_name.startswith("Corrected"):
+        if self.map_rois_strategy == "RigidReg":
             roi_name = "rr_CTVp_7000"
         else:
             roi_name = "CTVp_7000"
@@ -345,6 +347,7 @@ class CreateIMPTPlan:
         self.set_dose_grid()
         self.set_robustness_parameters()
         self.set_prescription()
+
         if self.needs_ref_dose:
             self.set_reference_predicted_dose()
         plan_generation_time = time.time() - start_time

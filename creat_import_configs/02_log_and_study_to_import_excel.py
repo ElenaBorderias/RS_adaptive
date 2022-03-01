@@ -7,9 +7,11 @@ from os.path import isdir, join
 import openpyxl
 import pandas as pd
 
-import env
+_f = open('creat_import_configs/env.json')
+properties = json.load(_f)
+_f.close()
 
-patients_path = env.properties['patientsFolder']
+patients_path = properties['patientsFolder']
 
 chdir(patients_path)
 
@@ -40,8 +42,5 @@ for i, value in series_order['name'].items():
 series_order['study_uid'] = pd.Series(study_df)
 
 series_ordered = series_order.sort_values(by=['name', 'date-time'])
-
-
-
 
 series_ordered.to_excel("import_list.xlsx", engine='openpyxl')

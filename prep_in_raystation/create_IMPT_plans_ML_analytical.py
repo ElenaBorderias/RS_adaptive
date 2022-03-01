@@ -8,9 +8,9 @@ Created on Sat Sep  5 20:34:46 2020
 from connect import get_current
 
 analytical_plan_name = "IMPT_plan"
-ml_plan_name = "Adap_ML"
+ml_plan_name = "ML_IMPT_plan"
 xt_plan_name = "Empty plan"
-pCT_name = "vCT 01"
+pCT_name = "pCT"
 ml_model_name = "model_try_1"
 ml_strategy = "IMPT Demo"
 

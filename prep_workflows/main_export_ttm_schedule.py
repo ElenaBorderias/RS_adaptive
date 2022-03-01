@@ -1,9 +1,9 @@
 
 from connect import get_current
-from create_IMPT_plan import CreateIMPTPlan
 from create_virtual_ct_from_cbct import CreateConvertedImage
 from evaluation import NeedsAdaptation, EvaluateClinicalPlan
 import pandas as pd
+import time
 
 def main():
 
@@ -31,29 +31,46 @@ def main():
 
     model_rois = targets_model + oars_model
 
-    df = pd.DataFrame(columns = ["#Fraction","CBCT_name","Needs_adaptation", "D98_CTV_5425","D98_CTV_7000"])
-    cbct_names_list = ['CBCT 01','CBCT 02','CBCT 03']
+    df = pd.DataFrame(columns = ["#Fraction","CBCT_name","Needs_adaptation", "Needs_adaptation_0_1","D98_CTV_5425","D98_CTV_7000","t_CreateAdaptImage","t_DeformableMapping"])
 
     for i,cbct_name in enumerate(cbct_names_list):
 
         case.Examinations[cbct_name].ImportFraction = int(cbct_name[-2:])
         converter = CreateConvertedImage(pct_name, cbct_name, model_rois)
 
+        create_adaptImage_time = 0
         if "Corrected " + cbct_name not in exam_names:
+            start_time = time.time()
             adapt_image_name = converter.create_corrected_cbct()
+            """
+            try: 
+                adapt_image_name = converter.create_corrected_cbct()
+            except:
+                print("I couldnt generate the CBCT")
+            """
+            create_adaptImage_time = time.time() - start_time
         else:
             adapt_image_name = "Corrected " + cbct_name
         
-        #init_eval = EvaluateClinicalPlan(adapt_image_name, reference_plan_name)
-        #init_eval.map_rois_deformably()
-        
+        init_eval = EvaluateClinicalPlan(adapt_image_name, reference_plan_name)
+        start_time = time.time()
+        init_eval.map_rois_deformably()
+        deformable_mapping_time = time.time() - start_time
+
         init_adapt = NeedsAdaptation(adapt_image_name, reference_plan_name)
         adapt, ctv_low_coverage, ctv_high_coverage = init_adapt.check_adaptation_needed()
+        
+        if adapt[0]:
+            adapt_bin = 1
+        else:
+            adapt_bin = 0
 
-        df = df.append({'#Fraction' : int(cbct_name[-2:]), 'CBCT_name' : adapt_image_name, 'Needs_adaptation' : adapt, 'D98_CTV_5425':ctv_low_coverage, 'D98_CTV_7000': ctv_high_coverage},ignore_index = True)
+        df = df.append({'#Fraction' : int(cbct_name[-2:]), 'CBCT_name' : adapt_image_name, 'Needs_adaptation' : adapt,'Needs_adaptation_0_1': adapt_bin, 'D98_CTV_5425':ctv_low_coverage, 'D98_CTV_7000': ctv_high_coverage, 't_CreateAdaptImage': create_adaptImage_time, 't_DeformableMapping': deformable_mapping_time },ignore_index = True)
         print(df)
 
-    export_file = "C:\\Elena\\results\\" + patient.Name + "_ttmt_schedule.xlsx"
+        patient.Save()
+
+    export_file = "C:\\Elena\\results\\treatment_schedules\\" + patient.Name + "_ttmt_schedule.xlsx"
     df.to_excel(export_file, engine='openpyxl')
     
 

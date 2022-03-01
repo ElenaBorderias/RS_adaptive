@@ -8,9 +8,12 @@ from os.path import isdir, join
 import openpyxl
 import pandas as pd
 
-import env
+_f = open('creat_import_configs/env.json')
+properties = json.load(_f)
+_f.close()
 
-patients_path = env.properties['patientsFolder']
+
+patients_path = properties['patientsFolder']
 chdir(patients_path)
 
 excel_path = "import_list.xlsx"
@@ -48,7 +51,7 @@ for index, patient_data in anon_data_full.iterrows():
 for patient in listdir():
     if (isdir(patient)):
         patient_path = join(patient)
-        if (patient in env.properties['patientFilter']):
+        if (patient in properties['patientFilter']):
             with open(join(patient_path, "import_info.json"), "w") as outfile:
                 json.dump(patient_info[patient], outfile)
 
