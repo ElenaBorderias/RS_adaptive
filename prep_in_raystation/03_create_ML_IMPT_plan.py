@@ -170,6 +170,8 @@ roi_names = [x.OfRoi.Name for x in all_rois]
 all_plans = case.TreatmentPlans
 plan_names = [plan.Name for plan in all_plans]
 
+print(plan_names)
+
 if run_ml_plan:
     if ml_plan_name in plan_names:
         try:
@@ -183,6 +185,7 @@ if run_ml_plan:
                                    ExaminationName=pCT_name,
                                    IsMedicalOncologyPlan=False,
                                    AllowDuplicateNames=False)
+        patient.Save()
 
         ml_plan = case.TreatmentPlans[ml_plan_name]
 
@@ -218,7 +221,7 @@ if run_ml_plan:
         retval_1.SetDefaultDoseGrid(
             VoxelSize={'x': dose_grid_size, 'y': dose_grid_size, 'z': dose_grid_size})
 
-        retval_1.AddRoiPrescriptionDoseReference(RoiName="CTVp_7000", DoseVolume=0, PrescriptionType="MedianDose",
+        retval_1.AddRoiPrescriptionDoseReference(RoiName="CTV_7000", DoseVolume=0, PrescriptionType="MedianDose",
                                                  DoseValue=7000, RelativePrescriptionLevel=1)
         patient.Save()
 
