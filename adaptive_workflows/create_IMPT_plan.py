@@ -32,6 +32,69 @@ class CreateIMPTPlan:
         self.reference_plan = self.case.TreatmentPlans["ML_IMPT_plan"]
         self.reference_ct_name = "pCT"
         self.reference_ct = self.case.Examinations[self.reference_ct_name]
+        self.rigid_reg_name = self.pct_name[-7:] + ' -> pCT'
+        self.index = self.pct_name[-2:]
+        self.def_reg_name = "HybridDefReg" + self.index
+        
+
+
+        self.ctv_names = ["CTVnR_5425", "CTVnL_5425", "CTVp_7000", "CTV_5425", "CTV_7000","CTV_7000+10mm","CTV54.25-CTV70+10mm", "CTV_all"]
+
+        self.oar_names_def =["Mandible", "Esophagus", "SpinalCord", "Parotid_R", "Parotid_L", "Submandibular_L", "Submandibular_R", "Brainstem",
+                            "Oral_Cavity", "PharConsSup", "PharConsMid", "PharConsInf"]
+        
+        other_oars = ["Larynx","Cochlea_R", "Cochlea_L", "Retina_R", "Retina_L", "artifact"]
+        other_ctvs = ["CTVp_5425", "CTVnR_7000", "CTVnL_7000", "CTVn_7000"]
+
+        all_rois = self.case.PatientModel.StructureSets["pCT"].RoiGeometries
+        self.roi_names = [x.OfRoi.Name for x in all_rois]
+
+        for other_oar in other_oars:
+            if other_oar in self.roi_names:
+                self.oar_names_def.append(other_oar)
+        
+        for other_ctv in other_ctvs:
+            if other_ctv in self.roi_names:
+                self.ctv_names.append(other_ctv)
+
+        self.oar_names_predict =  []
+
+    def map_rois(self): 
+
+        if self.map_rois_strategy == "DIR":
+            #create hybrid registration
+            try: 
+                self.case.PatientModel.CreateHybridDeformableRegistrationGroup(RegistrationGroupName=self.def_reg_name, 
+                                                                            ReferenceExaminationName="pCT", TargetExaminationNames=[self.pct_name], 
+                                                                            ControllingRoiNames=[], ControllingPoiNames=[], FocusRoiNames=[], 
+                                                                            AlgorithmSettings={ 'NumberOfResolutionLevels': 3, 
+                                                                            'InitialResolution': { 'x': 0.5, 'y': 0.5, 'z': 0.5 }, 
+                                                                            'FinalResolution': { 'x': 0.25, 'y': 0.25, 'z': 0.25 }, 
+                                                                            'InitialGaussianSmoothingSigma': 2, 
+                                                                            'FinalGaussianSmoothingSigma': 0.333333333333333, 
+                                                                            'InitialGridRegularizationWeight': 1500, 
+                                                                            'FinalGridRegularizationWeight': 1000, 
+                                                                            'ControllingRoiWeight': 0.5, 
+                                                                            'ControllingPoiWeight': 0.1, 
+                                                                            'MaxNumberOfIterationsPerResolutionLevel': 1000, 
+                                                                            'ImageSimilarityMeasure': "CorrelationCoefficient", 
+                                                                            'DeformationStrategy': "Default", 'ConvergenceTolerance': 1E-05 })
+            except:
+                print("Deformable registration already exists")
+            #map_rois
+            self.case.MapRoiGeometriesDeformably(RoiGeometryNames= self.ctv_names + self.oar_names_def, CreateNewRois=False, 
+                                                    StructureRegistrationGroupNames=[self.def_reg_name], 
+                                                    ReferenceExaminationNames=["pCT"], TargetExaminationNames=[self.pct_name], 
+                                                    ReverseMapping=False, AbortWhenBadDisplacementField=True)
+            if "artifact" in self.roi_names:
+                self.case.PatientModel.RegionsOfInterest['BODY'].CreateAlgebraGeometry(Examination=self.case.Examinations[self.pct_name], Algorithm="Auto", ExpressionA={ 'Operation': "Union", 'SourceRoiNames': ["BODY"], 'MarginSettings': { 'Type': "Expand", 'Superior': 0, 'Inferior': 0, 'Anterior': 0, 'Posterior': 0, 'Right': 0, 'Left': 0 } }, ExpressionB={ 'Operation': "Union", 'SourceRoiNames': ["rr_artifact","artifact"], 'MarginSettings': { 'Type': "Expand", 'Superior': 0, 'Inferior': 0, 'Anterior': 0, 'Posterior': 0, 'Right': 0, 'Left': 0 } }, ResultOperation="Union", ResultMarginSettings={ 'Type': "Expand", 'Superior': 0, 'Inferior': 0, 'Anterior': 0, 'Posterior': 0, 'Right': 0, 'Left': 0 })
+
+            #delete_DIR
+            #self.case.DeleteDeformableRegistration(StructureRegistration = self.case.Registrations[self.rigid_reg_name].StructureRegistrations["HybridDefReg1"])
+
+            self.patient.Save()
+        else:
+            print("No mapping needed")
     
 
     def copy_dosegrid_from_plan_to_plan(self):
@@ -169,11 +232,13 @@ class CreateIMPTPlan:
     def fetch_roi_matches_planning(self):
 
         if self.map_rois_strategy == "RigidReg":
-            vct_matches_planning = "{\"CTV_High\":\"rr_CTV_7000\",\"CTV_Low\":\"rr_CTV_5425\",\"Brainstem\":\"rr_Brainstem\",\"SpinalCord\":\"rr_SpinalCord\",\"Parotid_L\":\"rr_Parotid_L\",\"Parotid_R\":\"rr_Parotid_R\",\"Glnd_Submand_L\":\"rr_Submandibular_L\",\"Glnd_Submand_R\":\"rr_Submandibular_R\",\"Cavity_Oral\":\"rr_Oral_Cavity\",\"Musc_Constrict_I\":\"rr_PharConsInf\",\"Musc_Constrict_M\":\"rr_PharConsMid\",\"Musc_Constrict_S\":\"rr_PharConsSup\",\"External\":\"BODY\",\"rr_CTV_High+10mm\":\"rr_CTV70+10mm\",\"CTV_Low-CTV_High+10mm\":\"rr_CTV54.25-CTV70+10mm\",\"Esophagus\":\"rr_Esophagus\"}"
-            return  vct_matches_planning
+            pct_matches_planning = "{\"CTV_High\":\"rr_CTV_7000\",\"CTV_Low\":\"rr_CTV_5425\",\"Brainstem\":\"rr_Brainstem\",\"SpinalCord\":\"rr_SpinalCord\",\"Parotid_L\":\"rr_Parotid_L\",\"Parotid_R\":\"rr_Parotid_R\",\"Glnd_Submand_L\":\"rr_Submandibular_L\",\"Glnd_Submand_R\":\"rr_Submandibular_R\",\"Cavity_Oral\":\"rr_Oral_Cavity\",\"Musc_Constrict_I\":\"rr_PharConsInf\",\"Musc_Constrict_M\":\"rr_PharConsMid\",\"Musc_Constrict_S\":\"rr_PharConsSup\",\"External\":\"BODY\",\"rr_CTV_High+10mm\":\"rr_CTV70+10mm\",\"CTV_Low-CTV_High+10mm\":\"rr_CTV54.25-CTV70+10mm\",\"Esophagus\":\"rr_Esophagus\"}"
+        elif self.map_rois_strategy == "DefReg_PredOARs":
+            pct_matches_planning = "{\"CTV_High\":\"CTV_7000\",\"CTV_Low\":\"CTV_5425\",\"Brainstem\":\"DL_Brainstem\",\"SpinalCord\":\"DL_SpinalCord\",\"Parotid_L\":\"DL_Parotid_L\",\"Parotid_R\":\"DR_Parotid_R\",\"Glnd_Submand_L\":\"DL_Submandibular_L\",\"Glnd_Submand_R\":\"DL_Submandibular_R\",\"Cavity_Oral\":\"DL_Oral_Cavity\",\"Musc_Constrict_I\":\"PharConsInf\",\"Musc_Constrict_M\":\"PharConsMid\",\"Musc_Constrict_S\":\"PharConsSup\",\"External\":\"BODY\",\"CTV_High+10mm\":\"CTV_7000+10mm\",\"CTV_Low-CTV_High+10mm\":\"CTV54.25-CTV70+10mm\",\"Esophagus\":\"DL_Esophagus\"}"
         else:
             pct_matches_planning = "{\"CTV_High\":\"CTV_7000\",\"CTV_Low\":\"CTV_5425\",\"Brainstem\":\"Brainstem\",\"SpinalCord\":\"SpinalCord\",\"Parotid_L\":\"Parotid_L\",\"Parotid_R\":\"Parotid_R\",\"Glnd_Submand_L\":\"Submandibular_L\",\"Glnd_Submand_R\":\"Submandibular_R\",\"Cavity_Oral\":\"Oral_Cavity\",\"Musc_Constrict_I\":\"PharConsInf\",\"Musc_Constrict_M\":\"PharConsMid\",\"Musc_Constrict_S\":\"PharConsSup\",\"External\":\"BODY\",\"CTV_High+10mm\":\"CTV_7000+10mm\",\"CTV_Low-CTV_High+10mm\":\"CTV54.25-CTV70+10mm\",\"Esophagus\":\"Esophagus\"}"
-            return pct_matches_planning
+        
+        return pct_matches_planning
 
     def fetch_roi_matches_running(self):
         
@@ -185,8 +250,14 @@ class CreateIMPTPlan:
                                         'Musc_Constrict_M': "rr_PharConsMid", 'Musc_Constrict_S': "rr_PharConsSup", 'External': "BODY",
                                         'CTV_High+10mm': "rr_CTV_7000+10mm", 'CTV_Low-CTV_High+10mm': "rr_CTV54.25-CTV70+10mm", 'Esophagus': "rr_Esophagus"}
             
-            return pct_roi_matches_run_planning
-        
+        elif self.map_rois_strategy == "DefReg_PredOARs":
+            pct_roi_matches_run_planning = {'CTV_High': "CTV_7000", 'CTV_Low': "CTV_5425",
+                                        'Brainstem': "DL_Brainstem", 'SpinalCord': "DL_SpinalCord",
+                                        'Parotid_L': "DL_Parotid_L", 'Parotid_R': "DL_Parotid_R", 'Glnd_Submand_L': "DL_Submandibular_L",
+                                        'Glnd_Submand_R': "DL_Submandibular_R", 'Cavity_Oral': "DL_Oral_Cavity", 
+                                        'Musc_Constrict_I': "PharConsInf",'Musc_Constrict_M': "PharConsMid", 'Musc_Constrict_S': "PharConsSup", 
+                                        'External': "BODY",
+                                        'CTV_High+10mm': "CTV_7000+10mm", 'CTV_Low-CTV_High+10mm': "CTV54.25-CTV70+10mm", 'Esophagus': "DL_Esophagus"}
         else:
             pct_roi_matches_run_planning = {'CTV_High': "CTV_7000", 'CTV_Low': "CTV_5425",
                                         'Brainstem': "Brainstem", 'SpinalCord': "SpinalCord",
@@ -195,7 +266,7 @@ class CreateIMPTPlan:
                                         'Musc_Constrict_M': "PharConsMid", 'Musc_Constrict_S': "PharConsSup", 'External': "BODY",
                                         'CTV_High+10mm': "CTV_7000+10mm", 'CTV_Low-CTV_High+10mm': "CTV54.25-CTV70+10mm", 'Esophagus': "Esophagus"}
             
-            return pct_roi_matches_run_planning
+        return pct_roi_matches_run_planning
     
     def fetch_model_id(self):
         self.ml_model_id = False
@@ -253,9 +324,9 @@ class CreateIMPTPlan:
     def set_prescription(self):
 
         if self.map_rois_strategy == "RigidReg":
-            roi_name = "rr_CTVp_7000"
+            roi_name = "rr_CTV_7000"
         else:
-            roi_name = "CTVp_7000"
+            roi_name = "CTV_7000"
         
         self.case.TreatmentPlans[self.ml_plan_name].BeamSets[0].AddRoiPrescriptionDoseReference(RoiName=roi_name, DoseVolume=0, PrescriptionType="MedianDose",
                                                 DoseValue=7000, RelativePrescriptionLevel=1)
@@ -344,6 +415,7 @@ class CreateIMPTPlan:
         start_time = time.time()
         self.add_IMPT_plan()
         self.add_beams_to_plan()
+        self.map_rois()
         self.set_dose_grid()
         self.set_robustness_parameters()
         self.set_prescription()
@@ -355,6 +427,8 @@ class CreateIMPTPlan:
         self.patient.Save()
         self.ml_plan = self.case.TreatmentPlans[self.ml_plan_name]
         self.ml_beam_set = self.ml_plan.BeamSets[0]
+
+        self.patient.Save()
 
         print(self.ml_plan)
 
@@ -375,7 +449,7 @@ class CreateIMPTPlan:
 
         self.ml_beam_set.SetAutoScaleToPrimaryPrescription(AutoScale=True)
 
-        self.run_run_eval(0.1,4) #setup error in mm and range error in % 
+        #self.run_run_eval(0.1,4) #setup error in mm and range error in % 
 
         self.patient.Save()
 

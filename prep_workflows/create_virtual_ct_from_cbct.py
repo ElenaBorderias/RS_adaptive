@@ -92,9 +92,36 @@ class CreateConvertedImage:
 
             with CompositeAction('Field-of-view ROI (Field-of-view-CBCT 01, Image set: CBCT 01)'):
 
-                retval_0=self.case.PatientModel.CreateRoi(Name=self.fov_roi_name, Color="Red", Type="FieldOfView", TissueName=None, RbeCellTypeName=None, RoiMaterial=None)
-                retval_0.CreateFieldOfViewROI(ExaminationName=self.cbct_name)
+                self.case.PatientModel.CreateRoi(Name=self.fov_roi_name, Color="Red", Type="FieldOfView", TissueName=None, RbeCellTypeName=None, RoiMaterial=None)
 
+                
+                self.case.PatientModel.RegionsOfInterest[self.fov_roi_name].GrayLevelThreshold(Examination=self.case.Examinations[self.cbct_name], LowThreshold=-1000, HighThreshold=7000, PetUnit="", CbctUnit="CbctValue", BoundingBox=None)
+                
+                try:
+                    retval_0 = self.case.PatientModel.CreateRoi(Name="aux_FOV", Color="Red", Type="FieldOfView", TissueName=None, RbeCellTypeName=None, RoiMaterial=None)
+                    retval_0.CreateFieldOfViewROI(ExaminationName=self.cbct_name)
+                    self.case.PatientModel.RegionsOfInterest[self.fov_roi_name].CreateAlgebraGeometry(Examination=self.case.Examinations[self.cbct_name], Algorithm="Auto",
+                                            ExpressionA={'Operation': "Union", 'SourceRoiNames': [self.fov_roi_name],
+                                                         'MarginSettings': {'Type': "Contract",
+                                                                            'Superior': 0,
+                                                                            'Inferior': 0,
+                                                                            'Anterior': 0,
+                                                                            'Posterior': 0,
+                                                                            'Right': 0,
+                                                                            'Left': 0}},
+                                            ExpressionB={'Operation': "Union",
+                                                         'SourceRoiNames': ["aux_FOV"],
+                                                         'MarginSettings': {'Type': "Expand", 'Superior': 0,
+                                                                            'Inferior': 0,
+                                                                            'Anterior': 0, 'Posterior': 0, 'Right': 0,
+                                                                            'Left': 0}},
+                                            ResultOperation="Union",
+                                            ResultMarginSettings={'Type': "Expand", 'Superior': 0, 'Inferior': 0,
+                                                                  'Anterior': 0, 'Posterior': 0, 'Right': 0, 'Left': 0})
+                    
+                except:
+                    print("No automatic field of view")
+                
                 self.case.PatientModel.RegionsOfInterest[self.fov_roi_name].CreateAlgebraGeometry(Examination=self.case.Examinations[self.cbct_name], Algorithm="Auto",
                                             ExpressionA={'Operation': "Union", 'SourceRoiNames': [self.fov_roi_name],
                                                          'MarginSettings': {'Type': "Contract",
@@ -116,27 +143,50 @@ class CreateConvertedImage:
 
             
         elif not self.case.PatientModel.StructureSets[self.cbct_name].RoiGeometries[self.fov_roi_name].HasContours():
-            self.case.PatientModel.RegionsOfInterest[self.fov_roi_name].CreateFieldOfViewROI(
-                ExaminationName=self.cbct_name)
+            self.case.PatientModel.RegionsOfInterest[self.fov_roi_name].GrayLevelThreshold(Examination=self.case.Examinations[self.cbct_name], LowThreshold=-1000, HighThreshold=7000, PetUnit="", CbctUnit="CbctValue", BoundingBox=None)
             
+            try:
+                retval_0 = self.case.PatientModel.CreateRoi(Name="aux_FOV", Color="Red", Type="FieldOfView", TissueName=None, RbeCellTypeName=None, RoiMaterial=None)
+                retval_0.CreateFieldOfViewROI(ExaminationName=self.cbct_name)
+                self.case.PatientModel.RegionsOfInterest[self.fov_roi_name].CreateAlgebraGeometry(Examination=self.case.Examinations[self.cbct_name], Algorithm="Auto",
+                                        ExpressionA={'Operation': "Union", 'SourceRoiNames': [self.fov_roi_name],
+                                                        'MarginSettings': {'Type': "Contract",
+                                                                        'Superior': 0,
+                                                                        'Inferior': 0,
+                                                                        'Anterior': 0,
+                                                                        'Posterior': 0,
+                                                                        'Right': 0,
+                                                                        'Left': 0}},
+                                        ExpressionB={'Operation': "Union",
+                                                        'SourceRoiNames': ["aux_FOV"],
+                                                        'MarginSettings': {'Type': "Expand", 'Superior': 0,
+                                                                        'Inferior': 0,
+                                                                        'Anterior': 0, 'Posterior': 0, 'Right': 0,
+                                                                        'Left': 0}},
+                                        ResultOperation="Union",
+                                        ResultMarginSettings={'Type': "Expand", 'Superior': 0, 'Inferior': 0,
+                                                                'Anterior': 0, 'Posterior': 0, 'Right': 0, 'Left': 0})
+            except:
+                print("No automatic field of view")
+                
             self.case.PatientModel.RegionsOfInterest[self.fov_roi_name].CreateAlgebraGeometry(Examination=self.case.Examinations[self.cbct_name], Algorithm="Auto",
-                                            ExpressionA={'Operation': "Union", 'SourceRoiNames': [self.fov_roi_name],
-                                                         'MarginSettings': {'Type': "Contract",
-                                                                            'Superior': focus_margin,
-                                                                            'Inferior': focus_margin,
-                                                                            'Anterior': focus_margin,
-                                                                            'Posterior': focus_margin,
-                                                                            'Right': focus_margin,
-                                                                            'Left': focus_margin}},
-                                            ExpressionB={'Operation': "Union",
-                                                         'SourceRoiNames': ["BODY"],
-                                                         'MarginSettings': {'Type': "Expand", 'Superior': 0,
-                                                                            'Inferior': 0,
-                                                                            'Anterior': 0, 'Posterior': 0, 'Right': 0,
-                                                                            'Left': 0}},
-                                            ResultOperation="Intersection",
-                                            ResultMarginSettings={'Type': "Expand", 'Superior': 0, 'Inferior': 0,
-                                                                  'Anterior': 0, 'Posterior': 0, 'Right': 0, 'Left': 0})
+                                        ExpressionA={'Operation': "Union", 'SourceRoiNames': [self.fov_roi_name],
+                                                        'MarginSettings': {'Type': "Contract",
+                                                                        'Superior': focus_margin,
+                                                                        'Inferior': focus_margin,
+                                                                        'Anterior': focus_margin,
+                                                                        'Posterior': focus_margin,
+                                                                        'Right': focus_margin,
+                                                                        'Left': focus_margin}},
+                                        ExpressionB={'Operation': "Union",
+                                                        'SourceRoiNames': ["BODY"],
+                                                        'MarginSettings': {'Type': "Expand", 'Superior': 0,
+                                                                        'Inferior': 0,
+                                                                        'Anterior': 0, 'Posterior': 0, 'Right': 0,
+                                                                        'Left': 0}},
+                                        ResultOperation="Intersection",
+                                        ResultMarginSettings={'Type': "Expand", 'Superior': 0, 'Inferior': 0,
+                                                                'Anterior': 0, 'Posterior': 0, 'Right': 0, 'Left': 0})
     
 
         else:

@@ -10,12 +10,15 @@ import os
 import shutil
 
 import pydicom
+import json
 from pydicom.dataset import Dataset
 
-import env
+_f = open('preprocess/env.json')
+properties = json.load(_f)
+_f.close()
 
 # data path
-src = env.properties['patientsFolder']
+src = properties['patientsFolder']
 # parse data folder
 roi_names = []
 
@@ -47,7 +50,7 @@ def getPreviousRun(patient_folder):
 for patient in os.listdir(src):
     patient_folder = os.path.join(src, patient)
 
-    if (os.path.isdir(patient_folder) and (not env.properties['patientFilter'] or patient in env.properties['patientFilter'])):
+    if (os.path.isdir(patient_folder) and (not properties['patientFilter'] or patient in properties['patientFilter'])):
         print(patient)
         processed_files = getPreviousRun(patient_folder)
         ct_folder = os.path.join(patient_folder, 'CT')

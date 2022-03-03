@@ -66,19 +66,24 @@ class EvaluateClinicalPlan:
         self.patient = get_current("Patient")
         self.rigid_reg_name = adapt_image_name[-7:] + ' -> pCT'
 
-        self.ctv_names = ["CTVnR_5425", "CTVnL_5425", "CTVp_5425", "CTVp_7000", "CTV_5425", "CTV_7000", "CTV_all"]
+        self.ctv_names = ["CTVnR_5425", "CTVnL_5425", "CTVp_7000", "CTV_5425", "CTV_7000", "CTV_all"]
 
         self.oar_names_def =["Mandible", "Esophagus", "SpinalCord", "Parotid_R", "Parotid_L", "Submandibular_L", "Submandibular_R", "Brainstem",
                             "Oral_Cavity", "PharConsSup", "PharConsMid", "PharConsInf"]
         
-        other_rois = ["Larynx","Cochlea_R", "Cochlea_L", "Retina_R", "Retina_L", "artifact"]
+        other_oars = ["Larynx","Cochlea_R", "Cochlea_L", "Retina_R", "Retina_L", "artifact"]
+        other_ctvs = ["CTVp_5425", "CTVnR_7000", "CTVnL_7000", "CTVn_7000"]
 
         all_rois = self.case.PatientModel.StructureSets["pCT"].RoiGeometries
         self.roi_names = [x.OfRoi.Name for x in all_rois]
 
-        for roi in other_rois:
-            if roi in self.roi_names:
-                self.oar_names_def.append(roi)
+        for other_oar in other_oars:
+            if other_oar in self.roi_names:
+                self.oar_names_def.append(other_oar)
+        
+        for other_ctv in other_ctvs:
+            if other_ctv in self.roi_names:
+                self.ctv_names.append(other_ctv)
 
         self.oar_names_predict =  []
 

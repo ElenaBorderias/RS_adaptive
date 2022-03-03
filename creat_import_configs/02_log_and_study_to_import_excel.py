@@ -15,7 +15,7 @@ patients_path = properties['patientsFolder']
 
 chdir(patients_path)
 
-excel_path = "log_file_EB.xlsx"
+excel_path = "C:\\Patients\\log_file_EB.xlsx"
 anon_data_full = pd.read_excel(excel_path, engine='openpyxl', converters={
                                'AcquisitionDate': str, 'AcquisitionTime': str})
 anon_data = anon_data_full.iloc[0:len(anon_data_full), 0:15]
