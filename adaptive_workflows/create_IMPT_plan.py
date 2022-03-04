@@ -307,7 +307,7 @@ class CreateIMPTPlan:
                                                             Custom=None,
                                                             ToleranceTableLabel=None)
         
-        self.ml_plan = ml_plan
+        self.ml_plan = self.case.TreatmentPlans[self.ml_plan_name]
         self.fetch_roi_matches_planning()
         self.patient.Save()
         return self.ml_plan
@@ -365,7 +365,8 @@ class CreateIMPTPlan:
     def map_dose_from_pct(self):
 
         #create deformable registration
-        self.case.PatientModel.CreateHybridDeformableRegistrationGroup(RegistrationGroupName="Temp_reg",
+        temp_reg_name = "Temp_reg_" + self.index
+        self.case.PatientModel.CreateHybridDeformableRegistrationGroup(RegistrationGroupName=temp_reg_name,
                                                                        ReferenceExaminationName=self.pct_name,
                                                                        TargetExaminationNames=[self.reference_ct_name],
                                                                        ControllingRoiNames=[], ControllingPoiNames=[], FocusRoiNames=[],
@@ -383,7 +384,7 @@ class CreateIMPTPlan:
         
         for reg in self.case.Registrations:
             for structure_reg in reg.StructureRegistrations:
-                if structure_reg.Name  == "Temp_reg1":
+                if "Temp_reg" in structure_reg.Name and self.index in structure_reg.Name:
                     DIR_map_reg = structure_reg
 
         #set deformation field to 0
@@ -430,7 +431,9 @@ class CreateIMPTPlan:
 
         self.patient.Save()
 
-        print(self.ml_plan)
+        print(self.ml_plan.Name)
+
+        self.ml_plan.SetCurrent()
 
         start_time = time.time()
         try:
