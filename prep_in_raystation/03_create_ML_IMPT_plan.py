@@ -65,9 +65,8 @@ def add_beams_to_plan(plan_name, ct_name):
 
     plan = case.TreatmentPlans[plan_name]
     beam_set = plan.BeamSets[0]
-
    
-
+  
     iso_data = case.PatientModel.StructureSets[ct_name].RoiGeometries["CTV_all"].GetCenterOfRoi()
 
     print(iso_data)
@@ -188,6 +187,7 @@ if run_ml_plan:
         patient.Save()
 
         ml_plan = case.TreatmentPlans[ml_plan_name]
+        ml_plan.SetCurrent()
 
         for ml_mod in ml_models_info:
             print(ml_mod["Name"])

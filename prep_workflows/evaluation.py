@@ -65,6 +65,8 @@ class EvaluateClinicalPlan:
         self.case = get_current("Case")
         self.patient = get_current("Patient")
         self.rigid_reg_name = adapt_image_name[-7:] + ' -> pCT'
+        self.index = adapt_image_name[-2:]
+        self.def_reg_name = "HybridDefReg" + self.index
 
         self.ctv_names = ["CTVnR_5425", "CTVnL_5425", "CTVp_7000", "CTV_5425", "CTV_7000", "CTV_all"]
 
@@ -89,32 +91,34 @@ class EvaluateClinicalPlan:
 
     def map_rois_deformably(self): 
 
-        #create hybrid registration
-        self.case.PatientModel.CreateHybridDeformableRegistrationGroup(RegistrationGroupName="HybridDefReg", 
-                                                                        ReferenceExaminationName="pCT", TargetExaminationNames=[self.adapt_image_name], 
-                                                                        ControllingRoiNames=[], ControllingPoiNames=[], FocusRoiNames=[], 
-                                                                        AlgorithmSettings={ 'NumberOfResolutionLevels': 3, 
-                                                                        'InitialResolution': { 'x': 0.5, 'y': 0.5, 'z': 0.5 }, 
-                                                                        'FinalResolution': { 'x': 0.25, 'y': 0.25, 'z': 0.25 }, 
-                                                                        'InitialGaussianSmoothingSigma': 2, 
-                                                                        'FinalGaussianSmoothingSigma': 0.333333333333333, 
-                                                                        'InitialGridRegularizationWeight': 1500, 
-                                                                        'FinalGridRegularizationWeight': 1000, 
-                                                                        'ControllingRoiWeight': 0.5, 
-                                                                        'ControllingPoiWeight': 0.1, 
-                                                                        'MaxNumberOfIterationsPerResolutionLevel': 1000, 
-                                                                        'ImageSimilarityMeasure': "CorrelationCoefficient", 
-                                                                        'DeformationStrategy': "Default", 'ConvergenceTolerance': 1E-05 })
+        try:
+            #create hybrid registration
+            self.case.PatientModel.CreateHybridDeformableRegistrationGroup(RegistrationGroupName=self.def_reg_name, 
+                                                                            ReferenceExaminationName="pCT", TargetExaminationNames=[self.adapt_image_name], 
+                                                                            ControllingRoiNames=[], ControllingPoiNames=[], FocusRoiNames=[], 
+                                                                            AlgorithmSettings={ 'NumberOfResolutionLevels': 3, 
+                                                                            'InitialResolution': { 'x': 0.5, 'y': 0.5, 'z': 0.5 }, 
+                                                                            'FinalResolution': { 'x': 0.25, 'y': 0.25, 'z': 0.25 }, 
+                                                                            'InitialGaussianSmoothingSigma': 2, 
+                                                                            'FinalGaussianSmoothingSigma': 0.333333333333333, 
+                                                                            'InitialGridRegularizationWeight': 1500, 
+                                                                            'FinalGridRegularizationWeight': 1000, 
+                                                                            'ControllingRoiWeight': 0.5, 
+                                                                            'ControllingPoiWeight': 0.1, 
+                                                                            'MaxNumberOfIterationsPerResolutionLevel': 1000, 
+                                                                            'ImageSimilarityMeasure': "CorrelationCoefficient", 
+                                                                            'DeformationStrategy': "Default", 'ConvergenceTolerance': 1E-05 })
+        except:
+            print('Your deformable registration already existis')
         #map_rois
-        self.case.MapRoiGeometriesDeformably(RoiGeometryNames= self.ctv_names + self.oar_names_def, CreateNewRois=False, 
-                                                StructureRegistrationGroupNames=["HybridDefReg"], 
+        if not self.case.PatientModel.StructureSets[self.adapt_image_name].RoiGeometries["CTV_7000"].HasContours():
+            self.case.MapRoiGeometriesDeformably(RoiGeometryNames= self.ctv_names + self.oar_names_def, CreateNewRois=False, 
+                                                StructureRegistrationGroupNames=[self.def_reg_name], 
                                                 ReferenceExaminationNames=["pCT"], TargetExaminationNames=[self.adapt_image_name], 
                                                 ReverseMapping=False, AbortWhenBadDisplacementField=True)
         if "artifact" in self.roi_names:
             self.case.PatientModel.RegionsOfInterest['BODY'].CreateAlgebraGeometry(Examination=self.case.Examinations[self.adapt_image_name], Algorithm="Auto", ExpressionA={ 'Operation': "Union", 'SourceRoiNames': ["BODY"], 'MarginSettings': { 'Type': "Expand", 'Superior': 0, 'Inferior': 0, 'Anterior': 0, 'Posterior': 0, 'Right': 0, 'Left': 0 } }, ExpressionB={ 'Operation': "Union", 'SourceRoiNames': ["rr_artifact","artifact"], 'MarginSettings': { 'Type': "Expand", 'Superior': 0, 'Inferior': 0, 'Anterior': 0, 'Posterior': 0, 'Right': 0, 'Left': 0 } }, ResultOperation="Union", ResultMarginSettings={ 'Type': "Expand", 'Superior': 0, 'Inferior': 0, 'Anterior': 0, 'Posterior': 0, 'Right': 0, 'Left': 0 })
-
-        #delete_DIR
-        self.case.DeleteDeformableRegistration(StructureRegistration = self.case.Registrations[self.rigid_reg_name].StructureRegistrations["HybridDefReg1"])
+            self.case.PatientModel.StructureSets[self.adapt_image_name].SimplifyContours(RoiNames=["BODY"], RemoveHoles3D=True, RemoveSmallContours=False, AreaThreshold=None, ReduceMaxNumberOfPointsInContours=False, MaxNumberOfPoints=None, CreateCopyOfRoi=False, ResolveOverlappingContours=False)
 
         self.patient.Save()
 

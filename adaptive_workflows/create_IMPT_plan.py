@@ -58,13 +58,10 @@ class CreateIMPTPlan:
                 self.ctv_names.append(other_ctv)
 
         self.oar_names_predict =  []
-
-    def map_rois(self): 
-
-        if self.map_rois_strategy == "DIR":
-            #create hybrid registration
-            try: 
-                self.case.PatientModel.CreateHybridDeformableRegistrationGroup(RegistrationGroupName=self.def_reg_name, 
+    def run_DIR_pCT_adapt_image(self):
+        try:
+            #create hybrid registration 
+            self.case.PatientModel.CreateHybridDeformableRegistrationGroup(RegistrationGroupName=self.def_reg_name, 
                                                                             ReferenceExaminationName="pCT", TargetExaminationNames=[self.pct_name], 
                                                                             ControllingRoiNames=[], ControllingPoiNames=[], FocusRoiNames=[], 
                                                                             AlgorithmSettings={ 'NumberOfResolutionLevels': 3, 
@@ -79,8 +76,13 @@ class CreateIMPTPlan:
                                                                             'MaxNumberOfIterationsPerResolutionLevel': 1000, 
                                                                             'ImageSimilarityMeasure': "CorrelationCoefficient", 
                                                                             'DeformationStrategy': "Default", 'ConvergenceTolerance': 1E-05 })
-            except:
-                print("Deformable registration already exists")
+        except:
+            print("Deformable registration already exists")
+    def map_rois(self): 
+
+        if self.map_rois_strategy == "DIR":
+            #create hybrid registration
+            self.run_DIR_pCT_adapt_image()
             #map_rois
             self.case.MapRoiGeometriesDeformably(RoiGeometryNames= self.ctv_names + self.oar_names_def, CreateNewRois=False, 
                                                     StructureRegistrationGroupNames=[self.def_reg_name], 
@@ -94,8 +96,7 @@ class CreateIMPTPlan:
 
             self.patient.Save()
         else:
-            print("No mapping needed")
-    
+            print("No mapping needed, rr_rois already in the adapted image")
 
     def copy_dosegrid_from_plan_to_plan(self):
 
@@ -139,6 +140,8 @@ class CreateIMPTPlan:
         RS = ["RS40"]*len(BN)  # Range shifter ID
         AG = [6.0]*len(BN)  # Minimum Air GAP
 
+        if self.patient.Name == "ANON37":
+            RS = ["RS40", None,"RS40","RS40"]
         energy_layer_sep_factor = 0.9  # energy layer separation factor
         energy_selection_mode = "Automatic"
         fixed_spot_tune_id = "3.0"
@@ -291,6 +294,7 @@ class CreateIMPTPlan:
                                     AllowDuplicateNames=False)
 
         ml_plan = self.case.TreatmentPlans[self.ml_plan_name]
+        
         ml_plan.AddNewAutomaticPlanningBeamSet(MachineLearningModelID=self.fetch_model_id(),
                                                             AutomaticPlanningParameters={'Name': self.ml_model_name, 'Strategy': self.ml_model_strategy,
                                                                                         'BeamSetList': "[\"Proton\"]",
@@ -310,6 +314,8 @@ class CreateIMPTPlan:
         self.ml_plan = self.case.TreatmentPlans[self.ml_plan_name]
         self.fetch_roi_matches_planning()
         self.patient.Save()
+        self.ml_plan.SetCurrent()
+        
         return self.ml_plan
 
     def set_dose_grid(self):
@@ -331,7 +337,26 @@ class CreateIMPTPlan:
         self.case.TreatmentPlans[self.ml_plan_name].BeamSets[0].AddRoiPrescriptionDoseReference(RoiName=roi_name, DoseVolume=0, PrescriptionType="MedianDose",
                                                 DoseValue=7000, RelativePrescriptionLevel=1)
     
-    def set_reference_predicted_dose(self):
+    def set_reference_predicted_dose_resampling(self):
+        
+        new_dgr = self.ml_plan.GetTotalDoseGrid()
+        ref_dose_remsampled = self.reference_plan.PlanOptimizations[0].TreatmentCourseSource.TotalDose.GetTransformedAndResampledDoseValues(DoseGrid=new_dgr)
+        po = self.case.TreatmentPlans[self.ml_plan_name].PlanOptimizations[0]
+
+        model_dummy_guid = self.fetch_model_id()
+       
+        # set reference-"predicted" dose
+        print("Model ID = ", model_dummy_guid)
+        po.AddOptimizationReferenceDose(MachineLearningModelID=model_dummy_guid,
+                                        MachineLearningModelVersion=0,
+                                        MachineLearningParameters={"Name": 'Mimick dose', 'Strategy': "IMPT Demo", 
+                                        'RoiMatches': self.fetch_roi_matches_planning(), 
+                                        'BeamSet': self.ml_plan_name, 'HasRobustRois': "True", 'Approved': "False", 'ApprovedBy': "", 'ApprovalDate': None })
+       
+        self.case.TreatmentPlans[self.ml_plan_name].AutomaticPlanningPreprocessing()
+        po.OptimizationReferenceDose.SetDoseValues(Dose=ref_dose_remsampled, CalculationInfo='ref_dose')
+
+    def set_reference_predicted_dose_mapping(self):
         
         self.DIR_map_reg = self.map_dose_from_pct()
 
@@ -360,8 +385,6 @@ class CreateIMPTPlan:
         #delete_evaluation_and_DIR 
         last_dose_eval.DeleteEvaluationDose()
 
-        #self.case.DeleteDeformableRegistration(StructureRegistration = self.DIR_map_reg)
-
     def map_dose_from_pct(self):
 
         #create deformable registration
@@ -386,13 +409,16 @@ class CreateIMPTPlan:
             for structure_reg in reg.StructureRegistrations:
                 if "Temp_reg" in structure_reg.Name and self.index in structure_reg.Name:
                     DIR_map_reg = structure_reg
-
+        
         #set deformation field to 0
         data = DIR_map_reg.DeformationMatrix
         disp_field = len(data)*[0]
         disp_field = bytearray(disp_field)
+
+        print('Lets put the deformation field to 0')
         DIR_map_reg.SetDisplacementField(DisplacementField = disp_field)
 
+        print('Lets map the dose clinical dose to the adaptation image')
         #map dose to converted image
         dose_to_map = self.reference_plan.TreatmentCourse.TotalDose
         ref_dose_grid = self.case.TreatmentPlans[self.ml_plan_name].PlanOptimizations[0].OptimizationReferenceDose.InDoseGrid
@@ -401,7 +427,7 @@ class CreateIMPTPlan:
             DoseDistribution=dose_to_map, StructureRegistration=DIR_map_reg,ReferenceDoseGrid=ref_dose_grid)
 
         return DIR_map_reg
-    
+        
     def run_run_eval(self,setup_error_eval,range_error_eval):
 
         self.ml_beam_set.CreateRadiationSetScenarioGroup(Name="rob_eval_28sc", UseIsotropicPositionUncertainty=False,
@@ -411,7 +437,7 @@ class CreateIMPTPlan:
                                                     DensityUncertaintyPercent=range_error_eval, NumberOfDensityDiscretizationPoints=2, ComputeScenarioDosesAfterGroupCreation=False)
 
         self.case.TreatmentDelivery.RadiationSetScenarioGroups[self.case.TreatmentDelivery.RadiationSetScenarioGroups.Count-1].ComputeScenarioGroupDoseValues()
-
+    
     def create_run_and_approve_IMPT_plan(self):
         start_time = time.time()
         self.add_IMPT_plan()
@@ -422,8 +448,9 @@ class CreateIMPTPlan:
         self.set_prescription()
 
         if self.needs_ref_dose:
-            self.set_reference_predicted_dose()
-        plan_generation_time = time.time() - start_time
+            self.set_reference_predicted_dose_mapping()
+            #self.set_reference_predicted_resampling()
+        self.plan_generation_time = time.time() - start_time
 
         self.patient.Save()
         self.ml_plan = self.case.TreatmentPlans[self.ml_plan_name]
@@ -442,13 +469,11 @@ class CreateIMPTPlan:
         except:
             print("I couldn't run the automatic planning with model " + self.ml_model_name)
 
-        optimization_time = time.time() - start_time
+        self.optimization_time = time.time() - start_time
 
-        print("Your plan took ", optimization_time, " seconds to be optimize")
+        print("Your plan took ", self.optimization_time, " seconds to be optimize")
 
-        f_results_timing = open(r"C:\\Elena\\results\\Timings_log_files.txt", "w+")
-        f_results_timing.write("Patient : " + str(self.patient.Name) + "\t Plan Name : " + self.ml_plan_name + "\t Plan_generation_time : " + str(plan_generation_time/60) + "\t Optimization_time : " + str(optimization_time/60) + "\n")
-        f_results_timing.close()
+        print("Patient : " + str(self.patient.Name) + "\t Plan Name : " + self.ml_plan_name + "\t Plan_generation_time : " + str(self.plan_generation_time/60) + "\t Optimization_time : " + str(self.optimization_time/60) + "\n")
 
         self.ml_beam_set.SetAutoScaleToPrimaryPrescription(AutoScale=True)
 
@@ -456,4 +481,4 @@ class CreateIMPTPlan:
 
         self.patient.Save()
 
-        return plan_generation_time, optimization_time
+        return self.plan_generation_time, self.optimization_time

@@ -6,8 +6,9 @@
 from connect import *
 
 case = get_current("Case")
+patient = get_current("Patient")
 
-examination_list = ["pCT"]
+examination_list = ['pCT','Corrected CBCT 16','Corrected CBCT 28']
 
 for exam in examination_list:
     examination = case.Examinations[exam]
@@ -16,3 +17,5 @@ for exam in examination_list:
                                        exam: None},
                                    RoisToInclude=["DL_Brainstem", "DL_Esophagus_S", "DL_Oral_Cavity",
                                                   "DL_Parotid_L", "DL_Parotid_R", "DL_SpinalCord", "DL_Submandibular_L", "DL_Submandibular_R"])
+                                                  
+patient.Save()

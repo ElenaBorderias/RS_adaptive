@@ -80,7 +80,7 @@ class CreateConvertedImage:
     def check_and_create_external_contour(self):
         if not self.case.PatientModel.StructureSets[self.cbct_name].RoiGeometries["BODY"].HasContours():
             self.case.PatientModel.RegionsOfInterest['BODY'].CreateExternalGeometry(
-                Examination=self.case.Examinations[self.cbct_name], ThresholdLevel=-460)
+                Examination=self.case.Examinations[self.cbct_name], ThresholdLevel=-450)
 
     def create_FOV_roi(self):
 
@@ -284,7 +284,7 @@ class CreateConvertedImage:
                             TargetExaminationName=self.cbct_name, DeformableRegistrationName=self.dir_name,
                             FovRoiName=self.fov_roi_name)
 
-        self.case.PatientModel.RegionsOfInterest['BODY'].CreateExternalGeometry(Examination=self.case.Examinations[self.vct_name], ThresholdLevel=-250)
+        self.case.PatientModel.RegionsOfInterest['BODY'].CreateExternalGeometry(Examination=self.case.Examinations[self.vct_name], ThresholdLevel=-450)
         self.patient.Save()
         print("VirtualCT created successfully")
 

@@ -1,55 +1,208 @@
 from connect import *
+import pandas as pd
 
 
-class NeedsAdaptation:
+class EvaluationSummedDose:
 
-    def __init__(self, adapt_image_name, reference_plan_name):
+    def __init__(self,doe_pct,oa_strategy,summed_dose_name):
 
-        self.adapt_image_name = adapt_image_name
-        self.reference_plan_name = reference_plan_name
+        self.doe_pct = doe_pct
+        self.oa_strategy = oa_strategy
+        self.summed_dose_name = summed_dose_name
+
         self.case = get_current("Case")
         self.patient = get_current("Patient")
 
-    def evaluate_dose_examination(self):
-
-        beam_set_eval = self.case.TreatmentPlans[self.reference_plan_name].BeamSets[0]
-        beam_set_eval.ComputeDoseOnAdditionalSets(OnlyOneDosePerImageSet=False, AllowGridExpansion=True, ExaminationNames=[
-                                                  self.adapt_image_name], FractionNumbers=[0], ComputeBeamDoses=True)
-
     def find_dose_evaluation(self):
 
-        for doe in self.case.TreatmentDelivery.FractionEvaluations[0].DoseOnExaminations:
-            if doe.OnExamination.Name == self.adapt_image_name:
-                self.dose_on_examination = doe
+        for dose_eval in self.doe_pct.DoseEvaluations:
+            print(dose_eval.Name)
+            if dose_eval.Name == self.summed_dose_name:
+                self.dose_evaluation = dose_eval
 
-        return self.dose_on_examination
+        return self.dose_evaluation
 
-    def delete_eval_dose(self):
-        self.dose_eval.DeleteEvaluationDose()
+    def init_data_frame_results(self):
+        self.df_results = pd.DataFrame(columns=["Patient", "Plan_name", "ClinicalGoal", "Value"])
+    
+    def append_clinical_goal_to_df(self,clinical_goal,value):
+        self.df_results = self.df_results.append({'Patient' : self.patient.Name, 
+                                'Plan_name' : self.oa_strategy, 
+                                'ClinicalGoal' : clinical_goal,
+                                'Value': value},
+                                ignore_index = True)
+        #print(self.df_results)
+        
+    def evaluate_dose_statistics(self):
 
-    def check_adaptation_needed(self):
+        self.dose_eval = self.find_dose_evaluation()
+        self.init_data_frame_results()
 
-        self.evaluate_dose_examination()
-        self.find_dose_evaluation()
+        #ctvs
+        ctv_high_D98 = round(float(self.dose_eval.GetDoseAtRelativeVolumes(RoiName="CTV_7000", RelativeVolumes=[0.98])),2)
+        self.append_clinical_goal_to_df("CTV_7000_D98",ctv_high_D98)
 
-        for dose_eval in self.dose_on_examination.DoseEvaluations:
-            if dose_eval.ForBeamSet.DicomPlanLabel == self.reference_plan_name:
-                self.dose_eval = dose_eval
+        ctv_high_D2 = round(float(self.dose_eval.GetDoseAtRelativeVolumes(RoiName="CTV_7000", RelativeVolumes=[0.02])),2)
+        self.append_clinical_goal_to_df("CTV_7000_D02",ctv_high_D2)
 
-                ctv_high_bool = self.dose_eval.GetDoseAtRelativeVolumes(
-                    RoiName="CTV_7000", RelativeVolumes=[0.98]) < 5125
-                ctv_low_bool = self.dose_eval.GetDoseAtRelativeVolumes(
-                    RoiName="CTV_5425", RelativeVolumes=[0.98]) < 6650
+        ctv_p_high_D98 = round(float(self.dose_eval.GetDoseAtRelativeVolumes(RoiName="CTVp_7000", RelativeVolumes=[0.98])),2)
+        self.append_clinical_goal_to_df("CTVp_7000_D98",ctv_p_high_D98)
 
-        self.delete_eval_dose()
+        ctv_low_D98 = round(float(self.dose_eval.GetDoseAtRelativeVolumes(RoiName="CTV_5425", RelativeVolumes=[0.98])),2)
+        self.append_clinical_goal_to_df("CTV_5425_D98",ctv_low_D98)
 
-        adaptation_needed = ctv_high_bool or ctv_low_bool
-        print("Adaptation is needed for the fraction corresponding to ",
-              self.adapt_image_name)
+        ctv_nL_low_D98 = round(float(self.dose_eval.GetDoseAtRelativeVolumes(RoiName="CTVnL_5425", RelativeVolumes=[0.98])),2)
+        self.append_clinical_goal_to_df("CTVnL_5425_D98",ctv_nL_low_D98)
 
-        return adaptation_needed
+        ctv_nR_low_D98 = round(float(self.dose_eval.GetDoseAtRelativeVolumes(RoiName="CTVnR_5425", RelativeVolumes=[0.98])),2)
+        self.append_clinical_goal_to_df("CTVnR_5425_D98",ctv_nR_low_D98)
 
+        
+        #oars dmean
+        esophagus_Dmean = self.dose_eval.GetDoseStatistic(RoiName="Esophagus", DoseType="Average")
+        self.append_clinical_goal_to_df("Esophagus_Dmean",esophagus_Dmean)
 
+        oral_cavity_Dmean = self.dose_eval.GetDoseStatistic(RoiName="Oral_Cavity", DoseType="Average")
+        self.append_clinical_goal_to_df("Oral_Cavity_Dmean",oral_cavity_Dmean)
+
+        parotid_L_Dmean = self.dose_eval.GetDoseStatistic(RoiName="Parotid_L", DoseType="Average")
+        self.append_clinical_goal_to_df("Parotid_L_Dmean",parotid_L_Dmean)
+
+        parotid_R_Dmean = self.dose_eval.GetDoseStatistic(RoiName="Parotid_R", DoseType="Average")
+        self.append_clinical_goal_to_df("Parotid_R_Dmean",parotid_R_Dmean)
+
+        submand_L_Dmean = self.dose_eval.GetDoseStatistic(RoiName="Submandibular_L", DoseType="Average")
+        self.append_clinical_goal_to_df("Submandibular_L_Dmean",submand_L_Dmean)
+
+        submand_R_Dmean = self.dose_eval.GetDoseStatistic(RoiName="Submandibular_R", DoseType="Average")
+        self.append_clinical_goal_to_df("Submandibular_R_Dmean",submand_R_Dmean)
+
+        pcm_sup_Dmean = self.dose_eval.GetDoseStatistic(RoiName="PharConsSup", DoseType="Average")
+        self.append_clinical_goal_to_df("PharConsSup_Dmean",pcm_sup_Dmean)
+
+        pcm_mid_Dmean = self.dose_eval.GetDoseStatistic(RoiName="PharConsMid", DoseType="Average")
+        self.append_clinical_goal_to_df("PharConsMid_Dmean",pcm_mid_Dmean)
+
+        pcm_inf_Dmean = self.dose_eval.GetDoseStatistic(RoiName="PharConsInf", DoseType="Average")
+        self.append_clinical_goal_to_df("PharConsInf_Dmean",pcm_inf_Dmean)
+
+        #oars absolute volume
+        abs_vol_spinalcord = self.case.PatientModel.StructureSets[0].RoiGeometries["SpinalCord"].GetRoiVolume()
+        rel_vol_spinalcord = float((0.03*100)/abs_vol_spinalcord)
+    
+        abs_vol_brainstem = self.case.PatientModel.StructureSets[0].RoiGeometries["Brainstem"].GetRoiVolume()
+        rel_vol_brainstem = float((0.03*100)/abs_vol_brainstem)
+
+        abs_vol_body = self.case.PatientModel.StructureSets[0].RoiGeometries["BODY"].GetRoiVolume()
+        rel_vol_body = float((0.03*100)/abs_vol_body)
+
+        spinal_cord_D0_03 = round(float(self.dose_eval.GetDoseAtRelativeVolumes(RoiName= "SpinalCord", RelativeVolumes = [rel_vol_spinalcord])),2)
+        self.append_clinical_goal_to_df("SpinalCord_D0_03cc",spinal_cord_D0_03)
+
+        brainstem_D_0_03 = round(float(self.dose_eval.GetDoseAtRelativeVolumes(RoiName= "Brainstem", RelativeVolumes = [rel_vol_brainstem])),2)
+        self.append_clinical_goal_to_df("Brainstem_D0_03cc",brainstem_D_0_03)
+
+        body_D_0_03 = round(float(self.dose_eval.GetDoseAtRelativeVolumes(RoiName= "BODY", RelativeVolumes = [rel_vol_body])),2)
+        self.append_clinical_goal_to_df("BODY_D0_03cc",body_D_0_03)
+
+        print(self.df_results)
+
+        return self.df_results
+
+class EvaluationPlanningDose:
+        def __init__(self,plan_name):
+
+            self.case = get_current("Case")
+            self.patient = get_current("Patient")
+
+            self.plan_name = plan_name
+            self.dose_eval = self.case.TreatmentPlans[self.plan_name].PlanOptimizations[0].TreatmentCourseSource.TotalDose
+        
+        def append_clinical_goal_to_df(self,clinical_goal,value):
+            self.df_results = self.df_results.append({'Patient' : self.patient.Name, 
+                                'Plan_name' : self.plan_name, 
+                                'ClinicalGoal' : clinical_goal,
+                                'Value': value},
+                                ignore_index = True)
+        
+        def init_data_frame_results(self):
+            self.df_results = pd.DataFrame(columns=["Patient", "Plan_name", "ClinicalGoal", "Value"])
+        
+        def evaluate_dose_statistics(self):
+
+            self.init_data_frame_results()
+
+            #ctvs
+            ctv_high_D98 = round(float(self.dose_eval.GetDoseAtRelativeVolumes(RoiName="CTV_7000", RelativeVolumes=[0.98])),2)
+            self.append_clinical_goal_to_df("CTV_7000_D98",ctv_high_D98)
+
+            ctv_high_D2 = round(float(self.dose_eval.GetDoseAtRelativeVolumes(RoiName="CTV_7000", RelativeVolumes=[0.02])),2)
+            self.append_clinical_goal_to_df("CTV_7000_D02",ctv_high_D2)
+
+            ctv_p_high_D98 = round(float(self.dose_eval.GetDoseAtRelativeVolumes(RoiName="CTVp_7000", RelativeVolumes=[0.98])),2)
+            self.append_clinical_goal_to_df("CTVp_7000_D98",ctv_p_high_D98)
+
+            ctv_low_D98 = round(float(self.dose_eval.GetDoseAtRelativeVolumes(RoiName="CTV_5425", RelativeVolumes=[0.98])),2)
+            self.append_clinical_goal_to_df("CTV_5425_D98",ctv_low_D98)
+
+            ctv_nL_low_D98 = round(float(self.dose_eval.GetDoseAtRelativeVolumes(RoiName="CTVnL_5425", RelativeVolumes=[0.98])),2)
+            self.append_clinical_goal_to_df("CTVnL_5425_D98",ctv_nL_low_D98)
+
+            ctv_nR_low_D98 = round(float(self.dose_eval.GetDoseAtRelativeVolumes(RoiName="CTVnR_5425", RelativeVolumes=[0.98])),2)
+            self.append_clinical_goal_to_df("CTVnR_5425_D98",ctv_nR_low_D98)
+
+            
+            #oars dmean
+            esophagus_Dmean = self.dose_eval.GetDoseStatistic(RoiName="Esophagus", DoseType="Average")
+            self.append_clinical_goal_to_df("Esophagus_Dmean",esophagus_Dmean)
+
+            oral_cavity_Dmean = self.dose_eval.GetDoseStatistic(RoiName="Oral_Cavity", DoseType="Average")
+            self.append_clinical_goal_to_df("Oral_Cavity_Dmean",oral_cavity_Dmean)
+
+            parotid_L_Dmean = self.dose_eval.GetDoseStatistic(RoiName="Parotid_L", DoseType="Average")
+            self.append_clinical_goal_to_df("Parotid_L_Dmean",parotid_L_Dmean)
+
+            parotid_R_Dmean = self.dose_eval.GetDoseStatistic(RoiName="Parotid_R", DoseType="Average")
+            self.append_clinical_goal_to_df("Parotid_R_Dmean",parotid_R_Dmean)
+
+            submand_L_Dmean = self.dose_eval.GetDoseStatistic(RoiName="Submandibular_L", DoseType="Average")
+            self.append_clinical_goal_to_df("Submandibular_L_Dmean",submand_L_Dmean)
+
+            submand_R_Dmean = self.dose_eval.GetDoseStatistic(RoiName="Submandibular_R", DoseType="Average")
+            self.append_clinical_goal_to_df("Submandibular_R_Dmean",submand_R_Dmean)
+
+            pcm_sup_Dmean = self.dose_eval.GetDoseStatistic(RoiName="PharConsSup", DoseType="Average")
+            self.append_clinical_goal_to_df("PharConsSup_Dmean",pcm_sup_Dmean)
+
+            pcm_mid_Dmean = self.dose_eval.GetDoseStatistic(RoiName="PharConsMid", DoseType="Average")
+            self.append_clinical_goal_to_df("PharConsMid_Dmean",pcm_mid_Dmean)
+
+            pcm_inf_Dmean = self.dose_eval.GetDoseStatistic(RoiName="PharConsInf", DoseType="Average")
+            self.append_clinical_goal_to_df("PharConsInf_Dmean",pcm_inf_Dmean)
+
+            #oars absolute volume
+            abs_vol_spinalcord = self.case.PatientModel.StructureSets[0].RoiGeometries["SpinalCord"].GetRoiVolume()
+            rel_vol_spinalcord = float((0.03*100)/abs_vol_spinalcord)
+        
+            abs_vol_brainstem = self.case.PatientModel.StructureSets[0].RoiGeometries["Brainstem"].GetRoiVolume()
+            rel_vol_brainstem = float((0.03*100)/abs_vol_brainstem)
+
+            abs_vol_body = self.case.PatientModel.StructureSets[0].RoiGeometries["BODY"].GetRoiVolume()
+            rel_vol_body = float((0.03*100)/abs_vol_body)
+
+            spinal_cord_D0_03 = round(float(self.dose_eval.GetDoseAtRelativeVolumes(RoiName= "SpinalCord", RelativeVolumes = [rel_vol_spinalcord])),2)
+            self.append_clinical_goal_to_df("SpinalCord_D0_03cc",spinal_cord_D0_03)
+
+            brainstem_D_0_03 = round(float(self.dose_eval.GetDoseAtRelativeVolumes(RoiName= "Brainstem", RelativeVolumes = [rel_vol_brainstem])),2)
+            self.append_clinical_goal_to_df("Brainstem_D0_03cc",brainstem_D_0_03)
+
+            body_D_0_03 = round(float(self.dose_eval.GetDoseAtRelativeVolumes(RoiName= "BODY", RelativeVolumes = [rel_vol_body])),2)
+            self.append_clinical_goal_to_df("BODY_D0_03cc",body_D_0_03)
+
+            print(self.df_results)
+
+            return self.df_results
+"""
 class EvaluatePlan:
 
     def __init__(self, adapt_image_name, reference_plan_name,ctv_strategy,oar_strategy):
@@ -74,3 +227,4 @@ class EvaluatePlan:
 
     def export_clinical_goals(self):
         return 
+        """
