@@ -46,9 +46,9 @@ def main():
         print("No patient loaded")
 
     #patient_list = ["ANON6","ANON12","ANON16","ANON18","ANON26","ANON29","ANON34","ANON37","ANON38","ANON43"]
-    patient_list = ["ANON12"]
-   	#model_list = ["0_NoAdapt","1_AutoRS_def_rois", "2_MimClin_rr_rois"]
-    model_list = ["2_MimClin_rr_rois"]
+    patient_list = ["ANON6"]
+    model_list = ["0_NoAdapt","1_AutoRS_def_rois", "2_MimClin_rr_rois"]
+    #model_list = ["2_MimClin_rr_rois"]
 
     for patient_name in patient_list:
 
@@ -192,7 +192,7 @@ def main():
             results.to_excel(results_file, engine='openpyxl')
 
             all_results = all_results.append(results)
-            
+        
         # export results for all strategies and sum over fractions
         all_results_file = join(stats_folder, patient.Name + "_all_strategies" + ".xlsx")
         all_results.to_excel(all_results_file, engine='openpyxl')

@@ -87,22 +87,22 @@ class EvaluationSummedDose:
         self.append_clinical_goal_to_df("PharConsInf_Dmean",pcm_inf_Dmean)
 
         #oars absolute volume
-        abs_vol_spinalcord = self.case.PatientModel.StructureSets[0].RoiGeometries["SpinalCord"].GetRoiVolume()
+        abs_vol_spinalcord = self.case.PatientModel.StructureSets['pCT'].RoiGeometries["SpinalCord"].GetRoiVolume()
         rel_vol_spinalcord = float((0.03*100)/abs_vol_spinalcord)
     
-        abs_vol_brainstem = self.case.PatientModel.StructureSets[0].RoiGeometries["Brainstem"].GetRoiVolume()
+        abs_vol_brainstem = self.case.PatientModel.StructureSets['pCT'].RoiGeometries["Brainstem"].GetRoiVolume()
         rel_vol_brainstem = float((0.03*100)/abs_vol_brainstem)
 
-        abs_vol_body = self.case.PatientModel.StructureSets[0].RoiGeometries["BODY"].GetRoiVolume()
+        abs_vol_body = self.case.PatientModel.StructureSets['pCT'].RoiGeometries["BODY"].GetRoiVolume()
         rel_vol_body = float((0.03*100)/abs_vol_body)
 
-        spinal_cord_D0_03 = round(float(self.dose_eval.GetDoseAtRelativeVolumes(RoiName= "SpinalCord", RelativeVolumes = [rel_vol_spinalcord])),2)
+        spinal_cord_D0_03 = round(float(self.dose_eval.GetDoseAtRelativeVolumes(RoiName= "SpinalCord", RelativeVolumes = [rel_vol_spinalcord/100])),2)
         self.append_clinical_goal_to_df("SpinalCord_D0_03cc",spinal_cord_D0_03)
 
-        brainstem_D_0_03 = round(float(self.dose_eval.GetDoseAtRelativeVolumes(RoiName= "Brainstem", RelativeVolumes = [rel_vol_brainstem])),2)
+        brainstem_D_0_03 = round(float(self.dose_eval.GetDoseAtRelativeVolumes(RoiName= "Brainstem", RelativeVolumes = [rel_vol_brainstem/100])),2)
         self.append_clinical_goal_to_df("Brainstem_D0_03cc",brainstem_D_0_03)
 
-        body_D_0_03 = round(float(self.dose_eval.GetDoseAtRelativeVolumes(RoiName= "BODY", RelativeVolumes = [rel_vol_body])),2)
+        body_D_0_03 = round(float(self.dose_eval.GetDoseAtRelativeVolumes(RoiName= "BODY", RelativeVolumes = [rel_vol_body/100])),2)
         self.append_clinical_goal_to_df("BODY_D0_03cc",body_D_0_03)
 
         print(self.df_results)
@@ -190,13 +190,13 @@ class EvaluationPlanningDose:
             abs_vol_body = self.case.PatientModel.StructureSets[0].RoiGeometries["BODY"].GetRoiVolume()
             rel_vol_body = float((0.03*100)/abs_vol_body)
 
-            spinal_cord_D0_03 = round(float(self.dose_eval.GetDoseAtRelativeVolumes(RoiName= "SpinalCord", RelativeVolumes = [rel_vol_spinalcord])),2)
+            spinal_cord_D0_03 = round(float(self.dose_eval.GetDoseAtRelativeVolumes(RoiName= "SpinalCord", RelativeVolumes = [rel_vol_spinalcord/100])),2)
             self.append_clinical_goal_to_df("SpinalCord_D0_03cc",spinal_cord_D0_03)
 
-            brainstem_D_0_03 = round(float(self.dose_eval.GetDoseAtRelativeVolumes(RoiName= "Brainstem", RelativeVolumes = [rel_vol_brainstem])),2)
+            brainstem_D_0_03 = round(float(self.dose_eval.GetDoseAtRelativeVolumes(RoiName= "Brainstem", RelativeVolumes = [rel_vol_brainstem/100])),2)
             self.append_clinical_goal_to_df("Brainstem_D0_03cc",brainstem_D_0_03)
 
-            body_D_0_03 = round(float(self.dose_eval.GetDoseAtRelativeVolumes(RoiName= "BODY", RelativeVolumes = [rel_vol_body])),2)
+            body_D_0_03 = round(float(self.dose_eval.GetDoseAtRelativeVolumes(RoiName= "BODY", RelativeVolumes = [rel_vol_body/100])),2)
             self.append_clinical_goal_to_df("BODY_D0_03cc",body_D_0_03)
 
             print(self.df_results)
