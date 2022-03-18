@@ -61,6 +61,7 @@ class CreateIMPTPlan:
                 self.ctv_names.append(other_ctv)
 
         self.oar_names_predict =  []
+        
     def run_DIR_pCT_adapt_image(self):
         try:
             #create hybrid registration 
@@ -115,6 +116,7 @@ class CreateIMPTPlan:
         CornerZ = dgr.Corner.z
 
         corner={'x': CornerX, 'y': CornerY, 'z': CornerZ}
+
         from_FOR = self.reference_plan.PlanOptimizations[0].TreatmentCourseSource.TotalDose.InDoseGrid.FrameOfReference
         to_FOR = self.case.TreatmentPlans[self.ml_plan_name].PlanOptimizations[0].TreatmentCourseSource.TotalDose.InDoseGrid.FrameOfReference
         new_corner = self.case.TransformPointFromFoRToFoR(FromFrameOfReference=from_FOR,ToFrameOfReference=to_FOR,Point=corner)
