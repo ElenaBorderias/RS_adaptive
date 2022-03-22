@@ -25,7 +25,8 @@ def delete_all_dose_evaluations():
         if n_evals != 0:
             for i in range(len(doe.DoseEvaluations)-1,-1,-1):
                 dose_eval = doe.DoseEvaluations[i]
-                dose_eval.DeleteEvaluationDose()
+                if 'Summed' not in dose_eval.Name: 
+                    dose_eval.DeleteEvaluationDose()
 
 def read_model_param(model_name):
     _f = open('model_parameters.json')
@@ -94,8 +95,6 @@ def main():
         all_results = pd.DataFrame(columns=["Patient", "Plan_name", "ClinicalGoal", "Value"])
         all_patients_results = all_results
 
-
-
         for model in model_list:
             delete_all_dose_evaluations()
             model_paramters = read_model_param(model)
@@ -138,6 +137,7 @@ def main():
                     if auto_plan_name not in plan_names:
                         #run planning
                         t_plan_generation, t_plan_optimization = auto_planning.create_run_and_approve_IMPT_plan()
+
                         df_timing.append({'#Fraction': n_fx, 'Plan_image': adapt_image_name, 'Plan_name': auto_plan_name,
                                         't_plan_generation': t_plan_generation, 't_plan_optimization': t_plan_optimization}, ignore_index=True)
                         plan_names.append(auto_plan_name)
@@ -174,8 +174,9 @@ def main():
 
             dose_on_examination_pct = find_dose_on_examination(pct_name)
             for dose_eval in dose_on_examination_pct.DoseEvaluations:
-                doses_to_sum.append(dose_eval)
-                weights.append(1)
+                if 'Summed' not in dose_eval.Name: 
+                    doses_to_sum.append(dose_eval)
+                    weights.append(1)
 
             #create summed dose
             summed_dose_name = model_paramters['Alias'] + "Summed dose"
