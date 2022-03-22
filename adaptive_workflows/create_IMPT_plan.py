@@ -81,6 +81,7 @@ class CreateIMPTPlan:
                                                                             'DeformationStrategy': "Default", 'ConvergenceTolerance': 1E-05 })
         except:
             print("Deformable registration already exists")
+
     def map_rois(self): 
 
         if self.map_rois_strategy == "DIR":
@@ -434,8 +435,8 @@ class CreateIMPTPlan:
 
         #create deformable registration
         self.temp_reg_name = "Temp_reg_" + self.index
-
-        self.case.PatientModel.CreateHybridDeformableRegistrationGroup(RegistrationGroupName=self.temp_reg_name,
+        try:
+            self.case.PatientModel.CreateHybridDeformableRegistrationGroup(RegistrationGroupName=self.temp_reg_name,
                                                                        ReferenceExaminationName=self.pct_name,
                                                                        TargetExaminationNames=[self.reference_ct_name],
                                                                        ControllingRoiNames=[], ControllingPoiNames=[], FocusRoiNames=[],
@@ -450,7 +451,8 @@ class CreateIMPTPlan:
                                                                                           'MaxNumberOfIterationsPerResolutionLevel': 1000,
                                                                                           'ImageSimilarityMeasure': "CorrelationCoefficient",
                                                                                           'DeformationStrategy': "Default", 'ConvergenceTolerance': 1E-05})
-        
+        except:
+            print('Your deformable registration already exists, ', self.temp_reg_name)
         for reg in self.case.Registrations:
             for structure_reg in reg.StructureRegistrations:
                 if "Temp_reg" in structure_reg.Name and self.index in structure_reg.Name:
@@ -484,9 +486,11 @@ class CreateIMPTPlan:
         self.set_robustness_parameters()
         self.set_prescription()
 
-        if self.needs_ref_dose:
+        print(self.needs_ref_dose)
+        if self.needs_ref_dose == 'True':
             self.set_reference_predicted_dose_mapping()
             #self.set_reference_predicted_dose_resampling()
+        
         self.plan_generation_time = time.time() - start_time
 
         self.patient.Save()
@@ -501,9 +505,9 @@ class CreateIMPTPlan:
 
         start_time = time.time()
         try:
-            #self.ml_beam_set.RunAutomaticPlanning(ModelName=self.ml_model_name, ModelStrategy=self.ml_model_strategy,
-                                        #RoiMatches=self.fetch_roi_matches_running())
-            print('I am testing')
+            self.ml_beam_set.RunAutomaticPlanning(ModelName=self.ml_model_name, ModelStrategy=self.ml_model_strategy,
+                                        RoiMatches=self.fetch_roi_matches_running())
+            #print('I am testing')
         except:
             print("I couldn't run the automatic planning with model " + self.ml_model_name)
 

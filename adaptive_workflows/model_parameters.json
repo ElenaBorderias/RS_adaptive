@@ -5,7 +5,7 @@
   "ModelStrategy": "None",
   "ROI_mapping": "None",
   "DoseGrid": "None",
-  "Needs_reference_dose": "None"
+  "Needs_reference_dose": "False"
 },
   "1_AutoRS_def_rois": {
       "OAStrategy": "1_RSpred_RSmim_def_rois",

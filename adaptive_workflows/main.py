@@ -46,7 +46,7 @@ def main():
         print("No patient loaded")
 
     #patient_list = ["ANON6","ANON12","ANON16","ANON18","ANON26","ANON29","ANON34","ANON37","ANON38","ANON43"]
-    patient_list = ["ANON6"]
+    patient_list = ["ANON12"]
     model_list = ["0_NoAdapt","1_AutoRS_def_rois", "2_MimClin_rr_rois"]
     #model_list = ["2_MimClin_rr_rois"]
 
@@ -130,6 +130,8 @@ def main():
                                                         model_paramters['ROI_mapping'], 
                                                         model_paramters['DoseGrid'], 
                                                         model_paramters['Needs_reference_dose'])
+                
+                print('Model parameters: ', model_paramters)
                 if needs_adapt == 1:
                     print("Adaptation is needed for ", adapt_image_name)
                     
@@ -138,6 +140,7 @@ def main():
                         t_plan_generation, t_plan_optimization = auto_planning.create_run_and_approve_IMPT_plan()
                         df_timing.append({'#Fraction': n_fx, 'Plan_image': adapt_image_name, 'Plan_name': auto_plan_name,
                                         't_plan_generation': t_plan_generation, 't_plan_optimization': t_plan_optimization}, ignore_index=True)
+                        plan_names.append(auto_plan_name)
 
                     case.TreatmentPlans[auto_plan_name].BeamSets[0].ComputeDoseOnAdditionalSets(
                         OnlyOneDosePerImageSet=False, AllowGridExpansion=True, ExaminationNames=[adapt_image_name], FractionNumbers=[0], ComputeBeamDoses=True)
