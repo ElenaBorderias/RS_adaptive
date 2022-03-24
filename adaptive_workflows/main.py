@@ -25,8 +25,7 @@ def delete_all_dose_evaluations():
         if n_evals != 0:
             for i in range(len(doe.DoseEvaluations)-1,-1,-1):
                 dose_eval = doe.DoseEvaluations[i]
-                if 'Summed' not in dose_eval.Name: 
-                    dose_eval.DeleteEvaluationDose()
+                dose_eval.DeleteEvaluationDose()
 
 def read_model_param(model_name):
     _f = open('model_parameters.json')
@@ -47,7 +46,7 @@ def main():
         print("No patient loaded")
 
     #patient_list = ["ANON6","ANON12","ANON16","ANON18","ANON26","ANON29","ANON34","ANON37","ANON38","ANON43"]
-    patient_list = ["ANON12"]
+    patient_list = ["ANON38"]
     model_list = ["0_NoAdapt","1_AutoRS_def_rois", "2_MimClin_rr_rois"]
     #model_list = ["2_MimClin_rr_rois"]
 
@@ -91,7 +90,7 @@ def main():
                                     'Needs_adaptation', 'Needs_adaptation_0_1']]
 
         #dataframe initialisations
-        df_timing = pd.DataFrame(columns=["#Fraction", "Plan_image", "Plan_name", "t_plan_generation", "t_plan_optimization"])
+        df_timing = pd.DataFrame(columns=["#Fraction", "Plan_image", "Plan_name", "t_plan_generation (min)", "t_plan_optimization (min)"])
         all_results = pd.DataFrame(columns=["Patient", "Plan_name", "ClinicalGoal", "Value"])
         all_patients_results = all_results
 
@@ -138,9 +137,11 @@ def main():
                         #run planning
                         t_plan_generation, t_plan_optimization = auto_planning.create_run_and_approve_IMPT_plan()
 
-                        df_timing.append({'#Fraction': n_fx, 'Plan_image': adapt_image_name, 'Plan_name': auto_plan_name,
-                                        't_plan_generation': t_plan_generation, 't_plan_optimization': t_plan_optimization}, ignore_index=True)
+                        df_timing = df_timing.append({'#Fraction': n_fx, 'Plan_image': adapt_image_name, 'Plan_name': auto_plan_name,
+                                        't_plan_generation (min)': t_plan_generation/60, 't_plan_optimization (min)': t_plan_optimization/60}, ignore_index=True)
+
                         plan_names.append(auto_plan_name)
+                        print(plan_names)
 
                     case.TreatmentPlans[auto_plan_name].BeamSets[0].ComputeDoseOnAdditionalSets(
                         OnlyOneDosePerImageSet=False, AllowGridExpansion=True, ExaminationNames=[adapt_image_name], FractionNumbers=[0], ComputeBeamDoses=True)
@@ -174,9 +175,8 @@ def main():
 
             dose_on_examination_pct = find_dose_on_examination(pct_name)
             for dose_eval in dose_on_examination_pct.DoseEvaluations:
-                if 'Summed' not in dose_eval.Name: 
-                    doses_to_sum.append(dose_eval)
-                    weights.append(1)
+                doses_to_sum.append(dose_eval)
+                weights.append(1)
 
             #create summed dose
             summed_dose_name = model_paramters['Alias'] + "Summed dose"
@@ -204,6 +204,7 @@ def main():
         all_patients_results = all_patients_results.append(all_results)
 
         # export timing for all strategies and all fractions
+        print('Tiiming data frame: ', df_timing)
         if len(df_timing) != 0:
             export_file = join(timing_folder, patient.Name + "_timing.xlsx")
             df_timing.to_excel(export_file, engine='openpyxl')

@@ -453,6 +453,7 @@ class CreateIMPTPlan:
                                                                                           'DeformationStrategy': "Default", 'ConvergenceTolerance': 1E-05})
         except:
             print('Your deformable registration already exists, ', self.temp_reg_name)
+        
         for reg in self.case.Registrations:
             for structure_reg in reg.StructureRegistrations:
                 if "Temp_reg" in structure_reg.Name and self.index in structure_reg.Name:
@@ -521,6 +522,20 @@ class CreateIMPTPlan:
 
         #self.run_run_eval(0.1,4) #setup error in mm and range error in % 
 
+        if self.needs_ref_dose == 'True':
+        
+            for doe in self.case.TreatmentDelivery.FractionEvaluations[0].DoseOnExaminations:
+                if doe.OnExamination.Name == self.pct_name:
+                    for dose_eval in doe.DoseEvaluations:
+                        dose_name = dose_eval.Name
+                        try:
+                            dose_name = dose_eval.OfDoseDistribution.WeightedDoseReferences[0].DoseDistribution.ForBeamSet.DicomPlanLabel
+                        except:
+                            print('No dose name')
+
+                        if dose_name == self.reference_plan.Name:
+                            dose_eval.DeleteEvaluationDose()
+        
         self.patient.Save()
 
         return self.plan_generation_time, self.optimization_time

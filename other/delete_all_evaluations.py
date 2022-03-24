@@ -8,7 +8,6 @@ from connect import *
 case = get_current("Case")
 patient = get_current("Patient")
 
-case = get_current("Case")
 for doe in case.TreatmentDelivery.FractionEvaluations[0].DoseOnExaminations:
 	n_evals = len(doe.DoseEvaluations)
 	if n_evals != 0:
