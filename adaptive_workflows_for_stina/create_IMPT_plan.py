@@ -116,19 +116,31 @@ class CreateIMPTPlan:
         CornerZ = dgr.Corner.z
 
         corner={'x': CornerX, 'y': CornerY, 'z': CornerZ}
+        test_point = {'x': -20.80, 'y': -11.76, 'z': -22.00}
         print(corner)
         from_FOR = self.reference_plan.PlanOptimizations[0].TreatmentCourseSource.TotalDose.InDoseGrid.FrameOfReference
         to_FOR = self.case.TreatmentPlans[self.ml_plan_name].PlanOptimizations[0].TreatmentCourseSource.TotalDose.InDoseGrid.FrameOfReference
         new_corner = self.case.TransformPointFromFoRToFoR(FromFrameOfReference=from_FOR,ToFrameOfReference=to_FOR,Point=corner)
+        new_test_point = self.case.TransformPointFromFoRToFoR(FromFrameOfReference=from_FOR,ToFrameOfReference=to_FOR,Point=test_point)
+        print(corner)
         print(new_corner)
+
+        ml_dgr = self.ml_plan.GetTotalDoseGrid()
+        ml_corner={'x':  ml_dgr.Corner.x, 'y': ml_dgr.Corner.y, 'z': ml_dgr.Corner.z}
+
+
+        print('Test points')
+        print(test_point)
+        print(new_test_point)
 
         # set dose grid
         beam_set = self.case.TreatmentPlans[self.ml_plan_name].BeamSets[0]
 
-        beam_set.UpdateDoseGrid(Corner=new_corner,
+        beam_set.UpdateDoseGrid(Corner=ml_corner,
                                 VoxelSize={'x': VoxSizeX,
                                         'y': VoxSizeY, 'z': VoxSizeZ},
                                 NumberOfVoxels={'x': NrVoxX, 'y': NrVoxY, 'z': NrVoxZ})
+        self.patient.Save()
 
     def add_beams_to_plan(self):
 
@@ -421,7 +433,8 @@ class CreateIMPTPlan:
         def_reg_DVF0 = self.set_deformation_field_to_zero(DIR_map_reg)
 
         dose_to_map = self.reference_plan.TreatmentCourse.TotalDose
-        ref_dose_grid = self.case.TreatmentPlans[self.ml_plan_name].PlanOptimizations[0].OptimizationReferenceDose.InDoseGrid
+        #ref_dose_grid = self.case.TreatmentPlans[self.ml_plan_name].PlanOptimizations[0].OptimizationReferenceDose.InDoseGrid
+        ref_dose_grid = self.case.TreatmentPlans[self.ml_plan_name].PlanOptimizations[0].TreatmentCourseSource.TotalDose.InDoseGrid
 
         print('Lets map the dose using ', def_reg_DVF0)
         self.case.MapDose(FractionNumber=0,SetTotalDoseEstimateReference=False,DoseDistribution=dose_to_map, StructureRegistration=def_reg_DVF0,ReferenceDoseGrid=ref_dose_grid)
