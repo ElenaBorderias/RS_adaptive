@@ -380,8 +380,12 @@ class CreateIMPTPlan:
             if doe.OnExamination.Name == self.pct_name:
                 self.dose_on_examination = doe
 
-        #last_dose_eval = self.dose_on_examination.DoseEvaluations[self.dose_on_examination.DoseEvaluations.Count-1]
-        #self.ref_dose = last_dose_eval.DoseValues.DoseData
+        last_dose_eval = self.dose_on_examination.DoseEvaluations[self.dose_on_examination.DoseEvaluations.Count-1]
+        self.ref_dose = last_dose_eval.DoseValues.DoseData
+
+        #resampling 
+        ref_dose_grid = self.case.TreatmentPlans[self.ml_plan_name].PlanOptimizations[0].TreatmentCourseSource.TotalDose.InDoseGrid
+        self.ref_dose_resampled = last_dose_eval.GetTransformedAndResampledDoseValues(DoseGrid=ref_dose_grid)
 
         po = self.case.TreatmentPlans[self.ml_plan_name].PlanOptimizations[0]
 
@@ -433,12 +437,10 @@ class CreateIMPTPlan:
 
         dose_to_map = self.reference_plan.TreatmentCourse.TotalDose
         #ref_dose_grid = self.case.TreatmentPlans[self.ml_plan_name].PlanOptimizations[0].OptimizationReferenceDose.InDoseGrid
-        ref_dose_grid = self.case.TreatmentPlans[self.ml_plan_name].PlanOptimizations[0].TreatmentCourseSource.TotalDose.InDoseGrid
+        #ref_dose_grid = self.case.TreatmentPlans[self.ml_plan_name].PlanOptimizations[0].TreatmentCourseSource.TotalDose.InDoseGrid
 
         print('Lets map the dose using ', def_reg_DVF0)
         self.case.MapDose(FractionNumber=0,SetTotalDoseEstimateReference=False,DoseDistribution=dose_to_map, StructureRegistration=def_reg_DVF0,ReferenceDoseGrid=None)
-
-        self.ref_dose_resampled = self.reference_plan.PlanOptimizations[0].TreatmentCourseSource.TotalDose.GetTransformedAndResampledDoseValues(DoseGrid=ref_dose_grid)
 
         return def_reg_DVF0
     
