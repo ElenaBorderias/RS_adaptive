@@ -116,8 +116,8 @@ class CreateIMPTPlan:
         CornerZ = dgr.Corner.z
 
         corner={'x': CornerX, 'y': CornerY, 'z': CornerZ}
-        from_FOR = self.reference_plan.PlanOptimizations[0].TreatmentCourseSource.TotalDose.InDoseGrid.FrameOfReference
-        to_FOR = self.case.TreatmentPlans[self.ml_plan_name].PlanOptimizations[0].TreatmentCourseSource.TotalDose.InDoseGrid.FrameOfReference
+        to_FOR = self.reference_plan.PlanOptimizations[0].TreatmentCourseSource.TotalDose.InDoseGrid.FrameOfReference
+        from_FOR = self.case.TreatmentPlans[self.ml_plan_name].PlanOptimizations[0].TreatmentCourseSource.TotalDose.InDoseGrid.FrameOfReference
         new_corner = self.case.TransformPointFromFoRToFoR(FromFrameOfReference=from_FOR,ToFrameOfReference=to_FOR,Point=corner)
 
         # set dose grid
@@ -394,8 +394,8 @@ class CreateIMPTPlan:
         self.temp_reg_name = "Temp_reg_" + self.index
         try:
             self.case.PatientModel.CreateHybridDeformableRegistrationGroup(RegistrationGroupName=self.temp_reg_name,
-                                                                       ReferenceExaminationName=self.reference_ct_name,
-                                                                       TargetExaminationNames=[self.pct_name],
+                                                                       ReferenceExaminationName=self.pct_name,
+                                                                       TargetExaminationNames=[self.reference_ct_name],
                                                                        ControllingRoiNames=[], ControllingPoiNames=[], FocusRoiNames=[],
                                                                        AlgorithmSettings={'NumberOfResolutionLevels': 3,
                                                                                           'InitialResolution': {'x': 0.5, 'y': 0.5, 'z': 0.5},
@@ -420,8 +420,9 @@ class CreateIMPTPlan:
 
         dose_to_map = self.reference_plan.TreatmentCourse.TotalDose
         ref_dose_grid = self.case.TreatmentPlans[self.ml_plan_name].PlanOptimizations[0].OptimizationReferenceDose.InDoseGrid
-        
-        self.case.MapDose(FractionNumber=0,SetTotalDoseEstimateReference=True,DoseDistribution=dose_to_map, StructureRegistration=def_reg_DVF0,ReferenceDoseGrid=ref_dose_grid)
+
+        print('Lets map the dose using ', def_reg_DVF0)
+        self.case.MapDose(FractionNumber=0,SetTotalDoseEstimateReference=False,DoseDistribution=dose_to_map, StructureRegistration=def_reg_DVF0,ReferenceDoseGrid=ref_dose_grid)
 
         return def_reg_DVF0
     
@@ -454,10 +455,10 @@ class CreateIMPTPlan:
                 if self.temp_reg_name in struct_reg.Name:
                     dir_delete = struct_reg
 
-        #self.case.DeleteDeformableRegistration(StructureRegistration = dir_delete)
+        self.case.DeleteDeformableRegistration(StructureRegistration = dir_delete)
 
-        self.case.ImportDeformableRegistrationFromMetaImageFile(ReferenceExaminationName = self.reference_ct_name,
-                                                        TargetExaminationName = self.pct_name,
+        self.case.ImportDeformableRegistrationFromMetaImageFile(ReferenceExaminationName = self.pct_name,
+                                                        TargetExaminationName = self.reference_ct_name,
                                                         DeformableRegistrationGroupName = self.temp_reg_name+'_0',
                                                         MetaImageHeaderFileName = fileName)
         
