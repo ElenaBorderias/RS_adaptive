@@ -125,9 +125,8 @@ class CreateIMPTPlan:
         print(corner)
         print(new_corner)
 
-        ml_dgr = self.ml_plan.GetTotalDoseGrid()
-        ml_corner={'x':  ml_dgr.Corner.x, 'y': ml_dgr.Corner.y, 'z': ml_dgr.Corner.z}
-
+        #ml_dgr = self.ml_plan.GetTotalDoseGrid()
+        #ml_corner={'x':  ml_dgr.Corner.x, 'y': ml_dgr.Corner.y, 'z': ml_dgr.Corner.z}
 
         print('Test points')
         print(test_point)
@@ -136,7 +135,7 @@ class CreateIMPTPlan:
         # set dose grid
         beam_set = self.case.TreatmentPlans[self.ml_plan_name].BeamSets[0]
 
-        beam_set.UpdateDoseGrid(Corner=ml_corner,
+        beam_set.UpdateDoseGrid(Corner=new_corner,
                                 VoxelSize={'x': VoxSizeX,
                                         'y': VoxSizeY, 'z': VoxSizeZ},
                                 NumberOfVoxels={'x': NrVoxX, 'y': NrVoxY, 'z': NrVoxZ})
@@ -381,8 +380,8 @@ class CreateIMPTPlan:
             if doe.OnExamination.Name == self.pct_name:
                 self.dose_on_examination = doe
 
-        last_dose_eval = self.dose_on_examination.DoseEvaluations[self.dose_on_examination.DoseEvaluations.Count-1]
-        self.ref_dose = last_dose_eval.DoseValues.DoseData
+        #last_dose_eval = self.dose_on_examination.DoseEvaluations[self.dose_on_examination.DoseEvaluations.Count-1]
+        #self.ref_dose = last_dose_eval.DoseValues.DoseData
 
         po = self.case.TreatmentPlans[self.ml_plan_name].PlanOptimizations[0]
 
@@ -397,7 +396,7 @@ class CreateIMPTPlan:
                                         'BeamSet': self.ml_plan_name, 'HasRobustRois': "True", 'Approved': "False", 'ApprovedBy': "", 'ApprovalDate': None })
        
         self.case.TreatmentPlans[self.ml_plan_name].AutomaticPlanningPreprocessing()
-        po.OptimizationReferenceDose.SetDoseValues(Dose=self.ref_dose, CalculationInfo='ref_dose')
+        po.OptimizationReferenceDose.SetDoseValues(Dose=self.ref_dose_resampled, CalculationInfo='ref_dose')
 
         #delete_evaluation
         #last_dose_eval.DeleteEvaluationDose()
@@ -437,7 +436,9 @@ class CreateIMPTPlan:
         ref_dose_grid = self.case.TreatmentPlans[self.ml_plan_name].PlanOptimizations[0].TreatmentCourseSource.TotalDose.InDoseGrid
 
         print('Lets map the dose using ', def_reg_DVF0)
-        self.case.MapDose(FractionNumber=0,SetTotalDoseEstimateReference=False,DoseDistribution=dose_to_map, StructureRegistration=def_reg_DVF0,ReferenceDoseGrid=ref_dose_grid)
+        self.case.MapDose(FractionNumber=0,SetTotalDoseEstimateReference=False,DoseDistribution=dose_to_map, StructureRegistration=def_reg_DVF0,ReferenceDoseGrid=None)
+
+        self.ref_dose_resampled = self.reference_plan.PlanOptimizations[0].TreatmentCourseSource.TotalDose.GetTransformedAndResampledDoseValues(DoseGrid=ref_dose_grid)
 
         return def_reg_DVF0
     
