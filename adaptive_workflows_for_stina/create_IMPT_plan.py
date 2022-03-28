@@ -454,7 +454,7 @@ class CreateIMPTPlan:
                 if self.temp_reg_name in struct_reg.Name:
                     dir_delete = struct_reg
 
-        self.case.DeleteDeformableRegistration(StructureRegistration = dir_delete)
+        #self.case.DeleteDeformableRegistration(StructureRegistration = dir_delete)
 
         self.case.ImportDeformableRegistrationFromMetaImageFile(ReferenceExaminationName = self.reference_ct_name,
                                                         TargetExaminationName = self.pct_name,
