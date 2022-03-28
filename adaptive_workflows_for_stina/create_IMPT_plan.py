@@ -394,8 +394,8 @@ class CreateIMPTPlan:
         self.temp_reg_name = "Temp_reg_" + self.index
         try:
             self.case.PatientModel.CreateHybridDeformableRegistrationGroup(RegistrationGroupName=self.temp_reg_name,
-                                                                       ReferenceExaminationName=self.pct_name,
-                                                                       TargetExaminationNames=[self.reference_ct_name],
+                                                                       ReferenceExaminationName=self.reference_ct_name,
+                                                                       TargetExaminationNames=[self.pct_name],
                                                                        ControllingRoiNames=[], ControllingPoiNames=[], FocusRoiNames=[],
                                                                        AlgorithmSettings={'NumberOfResolutionLevels': 3,
                                                                                           'InitialResolution': {'x': 0.5, 'y': 0.5, 'z': 0.5},
@@ -456,8 +456,8 @@ class CreateIMPTPlan:
 
         self.case.DeleteDeformableRegistration(StructureRegistration = dir_delete)
 
-        self.case.ImportDeformableRegistrationFromMetaImageFile(ReferenceExaminationName = self.pct_name,
-                                                        TargetExaminationName = self.reference_ct_name,
+        self.case.ImportDeformableRegistrationFromMetaImageFile(ReferenceExaminationName = self.reference_ct_name,
+                                                        TargetExaminationName = self.pct_name,
                                                         DeformableRegistrationGroupName = self.temp_reg_name+'_0',
                                                         MetaImageHeaderFileName = fileName)
         
