@@ -6,7 +6,7 @@
 from connect import *
 
 case = get_current("Case")
-examination_list = ['Corrected CBCT 05', 'Corrected CBCT 34']
+examination_list = ['Corrected CBCT 09', 'Corrected CBCT 28']
 
 ctv_names = ["CTVnR_5425", "CTVnL_5425", "CTVp_7000", "CTV_5425", "CTV_7000"]
 

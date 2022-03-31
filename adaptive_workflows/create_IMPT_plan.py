@@ -5,6 +5,7 @@ Created on Sat Sep  5 20:34:46 2020
 
 @author: elena
 """
+from pyexpat import model
 from connect import get_current
 from genericpath import exists
 import time
@@ -88,13 +89,18 @@ class CreateIMPTPlan:
             #create hybrid registration
             self.run_DIR_pCT_adapt_image()
             #map_rois
+            all_rois = self.ctv_names + self.oar_names_def
+            rois_to_map = []
+            for roi in all_rois:
+                if not self.case.PatientModel.StructureSets[self.pct_name].RoiGeometries[roi].HasContours():
+                    rois_to_map.append(roi)
+
             self.case.MapRoiGeometriesDeformably(RoiGeometryNames= self.ctv_names + self.oar_names_def, CreateNewRois=False, 
                                                     StructureRegistrationGroupNames=[self.def_reg_name], 
                                                     ReferenceExaminationNames=["pCT"], TargetExaminationNames=[self.pct_name], 
                                                     ReverseMapping=False, AbortWhenBadDisplacementField=True)
             if "artifact" in self.roi_names:
                 self.case.PatientModel.RegionsOfInterest['BODY'].CreateAlgebraGeometry(Examination=self.case.Examinations[self.pct_name], Algorithm="Auto", ExpressionA={ 'Operation': "Union", 'SourceRoiNames': ["BODY"], 'MarginSettings': { 'Type': "Expand", 'Superior': 0, 'Inferior': 0, 'Anterior': 0, 'Posterior': 0, 'Right': 0, 'Left': 0 } }, ExpressionB={ 'Operation': "Union", 'SourceRoiNames': ["rr_artifact","artifact"], 'MarginSettings': { 'Type': "Expand", 'Superior': 0, 'Inferior': 0, 'Anterior': 0, 'Posterior': 0, 'Right': 0, 'Left': 0 } }, ResultOperation="Union", ResultMarginSettings={ 'Type': "Expand", 'Superior': 0, 'Inferior': 0, 'Anterior': 0, 'Posterior': 0, 'Right': 0, 'Left': 0 })
-
 
             self.patient.Save()
         else:
@@ -361,7 +367,7 @@ class CreateIMPTPlan:
 
     def set_reference_predicted_dose_mapping(self):
         
-        self.DIR_map_reg = self.map_dose_from_pct()
+        self.map_dose_from_pct()
 
         for doe in self.case.TreatmentDelivery.FractionEvaluations[0].DoseOnExaminations:
             if doe.OnExamination.Name == self.pct_name:
@@ -418,11 +424,13 @@ class CreateIMPTPlan:
                     dir_delete = struct_reg
 
         self.case.DeleteDeformableRegistration(StructureRegistration = dir_delete)
-
-        self.case.ImportDeformableRegistrationFromMetaImageFile(ReferenceExaminationName = self.pct_name,
+        try:
+            self.case.ImportDeformableRegistrationFromMetaImageFile(ReferenceExaminationName = self.pct_name,
                                                         TargetExaminationName = self.reference_ct_name,
                                                         DeformableRegistrationGroupName = self.temp_reg_name+'_0',
                                                         MetaImageHeaderFileName = fileName)
+        except:
+            print('Your registration ', self.temp_reg_name, ' already exists')
         
         for reg in self.case.Registrations:
             for struct_reg in reg.StructureRegistrations:
@@ -459,14 +467,18 @@ class CreateIMPTPlan:
                 if "Temp_reg" in structure_reg.Name and self.index in structure_reg.Name:
                     DIR_map_reg = structure_reg
 
-        def_reg_DVF0 = self.set_deformation_field_to_zero(DIR_map_reg)
-
         dose_to_map = self.reference_plan.TreatmentCourse.TotalDose
         ref_dose_grid = self.case.TreatmentPlans[self.ml_plan_name].PlanOptimizations[0].OptimizationReferenceDose.InDoseGrid
-        
-        self.case.MapDose(FractionNumber=0,SetTotalDoseEstimateReference=True,DoseDistribution=dose_to_map, StructureRegistration=def_reg_DVF0,ReferenceDoseGrid=ref_dose_grid)
 
-        return def_reg_DVF0
+        if self.map_rois_strategy == 'RigidReg':
+            def_reg_DVF0 = self.set_deformation_field_to_zero(DIR_map_reg)
+            
+            print('LETS MAP THE DOSE RIGIDLY with: ',def_reg_DVF0)
+            self.case.MapDose(FractionNumber=0,SetTotalDoseEstimateReference=True,DoseDistribution=dose_to_map, StructureRegistration=def_reg_DVF0,ReferenceDoseGrid=ref_dose_grid)
+        
+        if self.map_rois_strategy == 'DIR':
+            print('LETS MAP THE DOSE DEFORMABLY with: ', DIR_map_reg)
+            self.case.MapDose(FractionNumber=0,SetTotalDoseEstimateReference=True,DoseDistribution=dose_to_map, StructureRegistration=DIR_map_reg,ReferenceDoseGrid=ref_dose_grid)
         
     def run_run_eval(self,setup_error_eval,range_error_eval):
 

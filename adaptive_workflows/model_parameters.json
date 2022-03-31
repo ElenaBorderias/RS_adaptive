@@ -24,5 +24,14 @@
     "ROI_mapping": "RigidReg",
     "DoseGrid": "Copy_from_plan",
     "Needs_reference_dose": "True"
+  },
+  "3_MimDef_def_rois": {
+    "OAStrategy": "3_Mimick_DefDose_def_rois",
+    "Alias": "3_MimDef_",
+    "ModelName": "Only_mimicking_conv_img",
+    "ModelStrategy": "IMPT Demo",
+    "ROI_mapping": "DIR",
+    "DoseGrid": "Copy_from_plan",
+    "Needs_reference_dose": "True"
   }
 }
