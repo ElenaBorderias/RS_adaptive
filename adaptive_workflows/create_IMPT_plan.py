@@ -91,14 +91,18 @@ class CreateIMPTPlan:
             #map_rois
             all_rois = self.ctv_names + self.oar_names_def
             rois_to_map = []
+
             for roi in all_rois:
                 if not self.case.PatientModel.StructureSets[self.pct_name].RoiGeometries[roi].HasContours():
                     rois_to_map.append(roi)
-
-            self.case.MapRoiGeometriesDeformably(RoiGeometryNames= self.ctv_names + self.oar_names_def, CreateNewRois=False, 
+            try:
+                self.case.MapRoiGeometriesDeformably(RoiGeometryNames= rois_to_map, CreateNewRois=False, 
                                                     StructureRegistrationGroupNames=[self.def_reg_name], 
                                                     ReferenceExaminationNames=["pCT"], TargetExaminationNames=[self.pct_name], 
                                                     ReverseMapping=False, AbortWhenBadDisplacementField=True)
+            except:
+                print("No mapping, def rois already exist in the adaptation image")
+                
             if "artifact" in self.roi_names:
                 self.case.PatientModel.RegionsOfInterest['BODY'].CreateAlgebraGeometry(Examination=self.case.Examinations[self.pct_name], Algorithm="Auto", ExpressionA={ 'Operation': "Union", 'SourceRoiNames': ["BODY"], 'MarginSettings': { 'Type': "Expand", 'Superior': 0, 'Inferior': 0, 'Anterior': 0, 'Posterior': 0, 'Right': 0, 'Left': 0 } }, ExpressionB={ 'Operation': "Union", 'SourceRoiNames': ["rr_artifact","artifact"], 'MarginSettings': { 'Type': "Expand", 'Superior': 0, 'Inferior': 0, 'Anterior': 0, 'Posterior': 0, 'Right': 0, 'Left': 0 } }, ResultOperation="Union", ResultMarginSettings={ 'Type': "Expand", 'Superior': 0, 'Inferior': 0, 'Anterior': 0, 'Posterior': 0, 'Right': 0, 'Left': 0 })
 
