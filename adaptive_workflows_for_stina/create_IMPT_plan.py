@@ -5,7 +5,6 @@ Created on Sat Sep  5 20:34:46 2020
 
 @author: elena
 """
-from pyexpat import model
 from connect import get_current
 from genericpath import exists
 import time
@@ -89,22 +88,13 @@ class CreateIMPTPlan:
             #create hybrid registration
             self.run_DIR_pCT_adapt_image()
             #map_rois
-            all_rois = self.ctv_names + self.oar_names_def
-            rois_to_map = []
-
-            for roi in all_rois:
-                if not self.case.PatientModel.StructureSets[self.pct_name].RoiGeometries[roi].HasContours():
-                    rois_to_map.append(roi)
-            try:
-                self.case.MapRoiGeometriesDeformably(RoiGeometryNames= rois_to_map, CreateNewRois=False, 
+            self.case.MapRoiGeometriesDeformably(RoiGeometryNames= self.ctv_names + self.oar_names_def, CreateNewRois=False, 
                                                     StructureRegistrationGroupNames=[self.def_reg_name], 
                                                     ReferenceExaminationNames=["pCT"], TargetExaminationNames=[self.pct_name], 
                                                     ReverseMapping=False, AbortWhenBadDisplacementField=True)
-            except:
-                print("No mapping, def rois already exist in the adaptation image")
-                
             if "artifact" in self.roi_names:
                 self.case.PatientModel.RegionsOfInterest['BODY'].CreateAlgebraGeometry(Examination=self.case.Examinations[self.pct_name], Algorithm="Auto", ExpressionA={ 'Operation': "Union", 'SourceRoiNames': ["BODY"], 'MarginSettings': { 'Type': "Expand", 'Superior': 0, 'Inferior': 0, 'Anterior': 0, 'Posterior': 0, 'Right': 0, 'Left': 0 } }, ExpressionB={ 'Operation': "Union", 'SourceRoiNames': ["rr_artifact","artifact"], 'MarginSettings': { 'Type': "Expand", 'Superior': 0, 'Inferior': 0, 'Anterior': 0, 'Posterior': 0, 'Right': 0, 'Left': 0 } }, ResultOperation="Union", ResultMarginSettings={ 'Type': "Expand", 'Superior': 0, 'Inferior': 0, 'Anterior': 0, 'Posterior': 0, 'Right': 0, 'Left': 0 })
+
 
             self.patient.Save()
         else:
@@ -126,9 +116,21 @@ class CreateIMPTPlan:
         CornerZ = dgr.Corner.z
 
         corner={'x': CornerX, 'y': CornerY, 'z': CornerZ}
+        test_point = {'x': -20.80, 'y': -11.76, 'z': -22.00}
+        print(corner)
         from_FOR = self.reference_plan.PlanOptimizations[0].TreatmentCourseSource.TotalDose.InDoseGrid.FrameOfReference
         to_FOR = self.case.TreatmentPlans[self.ml_plan_name].PlanOptimizations[0].TreatmentCourseSource.TotalDose.InDoseGrid.FrameOfReference
         new_corner = self.case.TransformPointFromFoRToFoR(FromFrameOfReference=from_FOR,ToFrameOfReference=to_FOR,Point=corner)
+        new_test_point = self.case.TransformPointFromFoRToFoR(FromFrameOfReference=from_FOR,ToFrameOfReference=to_FOR,Point=test_point)
+        print(corner)
+        print(new_corner)
+
+        #ml_dgr = self.ml_plan.GetTotalDoseGrid()
+        #ml_corner={'x':  ml_dgr.Corner.x, 'y': ml_dgr.Corner.y, 'z': ml_dgr.Corner.z}
+
+        print('Test points')
+        print(test_point)
+        print(new_test_point)
 
         # set dose grid
         beam_set = self.case.TreatmentPlans[self.ml_plan_name].BeamSets[0]
@@ -137,6 +139,7 @@ class CreateIMPTPlan:
                                 VoxelSize={'x': VoxSizeX,
                                         'y': VoxSizeY, 'z': VoxSizeZ},
                                 NumberOfVoxels={'x': NrVoxX, 'y': NrVoxY, 'z': NrVoxZ})
+        self.patient.Save()
 
     def add_beams_to_plan(self):
 
@@ -371,7 +374,7 @@ class CreateIMPTPlan:
 
     def set_reference_predicted_dose_mapping(self):
         
-        self.map_dose_from_pct()
+        self.DIR_map_reg = self.map_dose_from_pct()
 
         for doe in self.case.TreatmentDelivery.FractionEvaluations[0].DoseOnExaminations:
             if doe.OnExamination.Name == self.pct_name:
@@ -379,6 +382,10 @@ class CreateIMPTPlan:
 
         last_dose_eval = self.dose_on_examination.DoseEvaluations[self.dose_on_examination.DoseEvaluations.Count-1]
         self.ref_dose = last_dose_eval.DoseValues.DoseData
+
+        #resampling 
+        ref_dose_grid = self.case.TreatmentPlans[self.ml_plan_name].PlanOptimizations[0].TreatmentCourseSource.TotalDose.InDoseGrid
+        self.ref_dose_resampled = last_dose_eval.GetTransformedAndResampledDoseValues(DoseGrid=ref_dose_grid)
 
         po = self.case.TreatmentPlans[self.ml_plan_name].PlanOptimizations[0]
 
@@ -393,10 +400,49 @@ class CreateIMPTPlan:
                                         'BeamSet': self.ml_plan_name, 'HasRobustRois': "True", 'Approved': "False", 'ApprovedBy': "", 'ApprovalDate': None })
        
         self.case.TreatmentPlans[self.ml_plan_name].AutomaticPlanningPreprocessing()
-        po.OptimizationReferenceDose.SetDoseValues(Dose=self.ref_dose, CalculationInfo='ref_dose')
+        po.OptimizationReferenceDose.SetDoseValues(Dose=self.ref_dose_resampled, CalculationInfo='ref_dose')
 
         #delete_evaluation
         #last_dose_eval.DeleteEvaluationDose()
+    
+    def map_dose_from_pct(self):
+
+        #create deformable registration
+        self.temp_reg_name = "Temp_reg_" + self.index
+        try:
+            self.case.PatientModel.CreateHybridDeformableRegistrationGroup(RegistrationGroupName=self.temp_reg_name,
+                                                                       ReferenceExaminationName=self.pct_name,
+                                                                       TargetExaminationNames=[self.reference_ct_name],
+                                                                       ControllingRoiNames=[], ControllingPoiNames=[], FocusRoiNames=[],
+                                                                       AlgorithmSettings={'NumberOfResolutionLevels': 3,
+                                                                                          'InitialResolution': {'x': 0.5, 'y': 0.5, 'z': 0.5},
+                                                                                          'FinalResolution': {'x': 0.25, 'y': 0.25, 'z': 0.25},
+                                                                                          'InitialGaussianSmoothingSigma': 2,
+                                                                                          'FinalGaussianSmoothingSigma': 0.333333333333333,
+                                                                                          'InitialGridRegularizationWeight': 1500,
+                                                                                          'FinalGridRegularizationWeight': 1000,
+                                                                                          'ControllingRoiWeight': 0.5, 'ControllingPoiWeight': 0.1,
+                                                                                          'MaxNumberOfIterationsPerResolutionLevel': 1000,
+                                                                                          'ImageSimilarityMeasure': "CorrelationCoefficient",
+                                                                                          'DeformationStrategy': "Default", 'ConvergenceTolerance': 1E-05})
+        except:
+            print('Your deformable registration already exists, ', self.temp_reg_name)
+        
+        for reg in self.case.Registrations:
+            for structure_reg in reg.StructureRegistrations:
+                if "Temp_reg" in structure_reg.Name and self.index in structure_reg.Name:
+                    DIR_map_reg = structure_reg
+
+        def_reg_DVF0 = self.set_deformation_field_to_zero(DIR_map_reg)
+
+        dose_to_map = self.reference_plan.TreatmentCourse.TotalDose
+        #ref_dose_grid = self.case.TreatmentPlans[self.ml_plan_name].PlanOptimizations[0].OptimizationReferenceDose.InDoseGrid
+        #ref_dose_grid = self.case.TreatmentPlans[self.ml_plan_name].PlanOptimizations[0].TreatmentCourseSource.TotalDose.InDoseGrid
+
+        print('Lets map the dose using ', def_reg_DVF0)
+        self.case.MapDose(FractionNumber=0,SetTotalDoseEstimateReference=False,DoseDistribution=dose_to_map, StructureRegistration=def_reg_DVF0,ReferenceDoseGrid=None)
+
+        return def_reg_DVF0
     
     def set_deformation_field_to_zero(self,def_reg_to_zero):
 
@@ -428,13 +474,11 @@ class CreateIMPTPlan:
                     dir_delete = struct_reg
 
         self.case.DeleteDeformableRegistration(StructureRegistration = dir_delete)
-        try:
-            self.case.ImportDeformableRegistrationFromMetaImageFile(ReferenceExaminationName = self.pct_name,
+
+        self.case.ImportDeformableRegistrationFromMetaImageFile(ReferenceExaminationName = self.pct_name,
                                                         TargetExaminationName = self.reference_ct_name,
                                                         DeformableRegistrationGroupName = self.temp_reg_name+'_0',
                                                         MetaImageHeaderFileName = fileName)
-        except:
-            print('Your registration ', self.temp_reg_name, ' already exists')
         
         for reg in self.case.Registrations:
             for struct_reg in reg.StructureRegistrations:
@@ -442,47 +486,6 @@ class CreateIMPTPlan:
                     dir_def_0 = struct_reg
 
         return dir_def_0
-
-    def map_dose_from_pct(self):
-
-        #create deformable registration
-        self.temp_reg_name = "Temp_reg_" + self.index
-        try:
-            self.case.PatientModel.CreateHybridDeformableRegistrationGroup(RegistrationGroupName=self.temp_reg_name,
-                                                                       ReferenceExaminationName=self.pct_name,
-                                                                       TargetExaminationNames=[self.reference_ct_name],
-                                                                       ControllingRoiNames=[], ControllingPoiNames=[], FocusRoiNames=[],
-                                                                       AlgorithmSettings={'NumberOfResolutionLevels': 3,
-                                                                                          'InitialResolution': {'x': 0.5, 'y': 0.5, 'z': 0.5},
-                                                                                          'FinalResolution': {'x': 0.25, 'y': 0.25, 'z': 0.25},
-                                                                                          'InitialGaussianSmoothingSigma': 2,
-                                                                                          'FinalGaussianSmoothingSigma': 0.333333333333333,
-                                                                                          'InitialGridRegularizationWeight': 1500,
-                                                                                          'FinalGridRegularizationWeight': 1000,
-                                                                                          'ControllingRoiWeight': 0.5, 'ControllingPoiWeight': 0.1,
-                                                                                          'MaxNumberOfIterationsPerResolutionLevel': 1000,
-                                                                                          'ImageSimilarityMeasure': "CorrelationCoefficient",
-                                                                                          'DeformationStrategy': "Default", 'ConvergenceTolerance': 1E-05})
-        except:
-            print('Your deformable registration already exists, ', self.temp_reg_name)
-        
-        for reg in self.case.Registrations:
-            for structure_reg in reg.StructureRegistrations:
-                if "Temp_reg" in structure_reg.Name and self.index in structure_reg.Name:
-                    DIR_map_reg = structure_reg
-
-        dose_to_map = self.reference_plan.TreatmentCourse.TotalDose
-        ref_dose_grid = self.case.TreatmentPlans[self.ml_plan_name].PlanOptimizations[0].OptimizationReferenceDose.InDoseGrid
-
-        if self.map_rois_strategy == 'RigidReg':
-            def_reg_DVF0 = self.set_deformation_field_to_zero(DIR_map_reg)
-            
-            print('LETS MAP THE DOSE RIGIDLY with: ',def_reg_DVF0)
-            self.case.MapDose(FractionNumber=0,SetTotalDoseEstimateReference=True,DoseDistribution=dose_to_map, StructureRegistration=def_reg_DVF0,ReferenceDoseGrid=ref_dose_grid)
-        
-        if self.map_rois_strategy == 'DIR':
-            print('LETS MAP THE DOSE DEFORMABLY with: ', DIR_map_reg)
-            self.case.MapDose(FractionNumber=0,SetTotalDoseEstimateReference=True,DoseDistribution=dose_to_map, StructureRegistration=DIR_map_reg,ReferenceDoseGrid=ref_dose_grid)
         
     def run_run_eval(self,setup_error_eval,range_error_eval):
 
@@ -499,6 +502,7 @@ class CreateIMPTPlan:
         self.add_IMPT_plan()
         self.add_beams_to_plan()
         self.map_rois()
+
         self.set_dose_grid()
         self.set_robustness_parameters()
         self.set_prescription()
@@ -522,36 +526,18 @@ class CreateIMPTPlan:
 
         start_time = time.time()
         try:
-            self.ml_beam_set.RunAutomaticPlanning(ModelName=self.ml_model_name, ModelStrategy=self.ml_model_strategy,
-                                        RoiMatches=self.fetch_roi_matches_running())
-            #print('I am testing')
+            #self.ml_beam_set.RunAutomaticPlanning(ModelName=self.ml_model_name, ModelStrategy=self.ml_model_strategy,
+                                        #RoiMatches=self.fetch_roi_matches_running())
+            print('I am testing for Stina')
         except:
             print("I couldn't run the automatic planning with model " + self.ml_model_name)
 
         self.optimization_time = time.time() - start_time
 
-        print("Your plan took ", self.optimization_time, " seconds to be optimize")
+        #print("Your plan took ", self.optimization_time, " seconds to be optimize")
 
-        print("Patient : " + str(self.patient.Name) + "\t Plan Name : " + self.ml_plan_name + "\t Plan_generation_time : " + str(self.plan_generation_time/60) + "\t Optimization_time : " + str(self.optimization_time/60) + "\n")
-
-        self.ml_beam_set.SetAutoScaleToPrimaryPrescription(AutoScale=True)
-
-        #self.run_run_eval(0.1,4) #setup error in mm and range error in % 
-
-        if self.needs_ref_dose == 'True':
+        #print("Patient : " + str(self.patient.Name) + "\t Plan Name : " + self.ml_plan_name + "\t Plan_generation_time : " + str(self.plan_generation_time/60) + "\t Optimization_time : " + str(self.optimization_time/60) + "\n")
         
-            for doe in self.case.TreatmentDelivery.FractionEvaluations[0].DoseOnExaminations:
-                if doe.OnExamination.Name == self.pct_name:
-                    for dose_eval in doe.DoseEvaluations:
-                        dose_name = dose_eval.Name
-                        try:
-                            dose_name = dose_eval.OfDoseDistribution.WeightedDoseReferences[0].DoseDistribution.ForBeamSet.DicomPlanLabel
-                        except:
-                            print('No dose name')
-
-                        if dose_name == self.reference_plan.Name:
-                            dose_eval.DeleteEvaluationDose()
-        
-        self.patient.Save()
+        #self.patient.Save()
 
         return self.plan_generation_time, self.optimization_time

@@ -7,7 +7,7 @@ from numpy import imag
 from connect import get_current, CompositeAction
 
 patients_path = "C:\\Patients"
-patient_list = ["ANON43"]
+patient_list = ["ANON38"]
 imaging_system = "Generic CT"
 
 patient_db = get_current('PatientDB')
@@ -25,28 +25,25 @@ for patient in listdir(patients_path):
         print(patient)
         import_info = getPatientImportData(join(patients_path, patient))
         print(join(patients_path, patient, "CT"))
-        patient_db.ImportPatientFromPath(
-            Path=join(patients_path, patient, "CT"), SeriesOrInstances=[import_info.get('ct')[0]])
+
 
         db_patient = get_current('Patient')
         case = get_current('Case')
 
-        case.Examinations['CT 1'].Name = 'pCT'
         pct = case.Examinations['pCT']
         pct.EquipmentInfo.SetImagingSystemReference(
-            ImagingSystemName=imaging_system)
+                ImagingSystemName=imaging_system)
 
         db_patient.Save()
-
-        db_patient.ImportDataFromPath(Path=join(patients_path, patient), CaseName='Case 1',
-                                      SeriesOrInstances=[import_info.get('rt_struct'), import_info.get('rt_dose')])
-
+        
         # cbct
         i = 1
         for cbct in import_info.get('cbct'):
-
-            db_patient.ImportDataFromPath(Path=join(patients_path, patient, "CBCT", cbct.get('SeriesInstanceUID')), CaseName='Case 1',
+            try:
+                db_patient.ImportDataFromPath(Path=join(patients_path, patient, "CBCT", cbct.get('SeriesInstanceUID')), CaseName='Case 1',
                                           SeriesOrInstances=[cbct])
+            except:
+                print("I coulndt import CBCT" + str(i).zfill(2))
 
             examination_index = case.Examinations.Count - 1
             case.Examinations[examination_index].Name = "CBCT " + \

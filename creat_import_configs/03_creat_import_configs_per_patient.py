@@ -16,7 +16,7 @@ _f.close()
 patients_path = properties['patientsFolder']
 chdir(patients_path)
 
-excel_path = "import_list.xlsx"
+excel_path = "C:\\Patients\\import_list.xlsx"
 anon_data_full = pd.read_excel(excel_path, engine='openpyxl')
 
 patient_info = {}
