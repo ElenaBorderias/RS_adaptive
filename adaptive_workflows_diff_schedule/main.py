@@ -1,9 +1,10 @@
 
+from enum import auto
 import imp
 from connect import get_current
 from create_IMPT_plan import CreateIMPTPlan
 from create_virtual_ct_from_cbct import CreateConvertedImage
-from evaluation import EvaluationSummedDose, EvaluationPlanningDose
+from evaluation import EvaluationSummedDose, EvaluationPlanningDose, NeedsAdaptation
 from Patients import Patient
 import pandas as pd
 from os.path import join
@@ -16,7 +17,6 @@ def find_dose_on_examination(examination_name):
         if doe.OnExamination.Name == examination_name:
             dose_on_examination = doe
     return dose_on_examination
-
 
 def delete_all_dose_evaluations():
     case = get_current("Case")
@@ -46,9 +46,9 @@ def main():
         print("No patient loaded")
 
     #patient_list = ["ANON6","ANON12","ANON16","ANON18","ANON26","ANON29","ANON34","ANON37","ANON38","ANON43"]
-    patient_list = ["ANON37","ANON26","ANON18"]
-    model_list = ["1_AutoRS_def_rois", "2_MimClin_rr_rois","3_MimDef_def_rois"]
-    #model_list = ["0_NoAdapt","1_AutoRS_def_rois", "2_MimClin_rr_rois","3_MimDef_def_rois"]
+    patient_list = ["ANON43","ANON12","ANON29","ANON38","ANON6"]
+    model_list = ["0_NoAdapt","1_AutoRS_def_rois", "2_MimClin_rr_rois","3_MimDef_def_rois"]
+    #model_list = model_list = ["0_NoAdapt","1_AutoRS_def_rois", "2_MimClin_rr_rois","3_MimDef_def_rois"]
     #adapt_strategy = ["Iniital_plan_pct", "Last_plan_rcts", "Best_of_plans_rcts"]
 
     for patient_name in patient_list:
@@ -62,11 +62,11 @@ def main():
         patient = get_current("Patient")
         pct_name = "pCT"
         initial_plan = "ML_IMPT_plan"
+        adaptation_strategy_init = "Best_plan"
         results_planning = evaluate_initial_planning(initial_plan)
 
         treatment_schedule_folder = "C:\\Elena\\results\\treatment_schedules"
-        timing_folder = "C:\\Elena\\results\\timing"
-        stats_folder = "C:\\Elena\\results\\dose_statistics"
+        stats_folder = join("C:\\Elena\\results\\different_ttmt_schedules",adaptation_strategy_init)
 
         #export initial planning results
         results_planning_file = join(stats_folder, patient.Name + "_initial_planning.xlsx")
@@ -91,13 +91,15 @@ def main():
                                     'Needs_adaptation', 'Needs_adaptation_0_1']]
 
         #dataframe initialisations
-        df_timing = pd.DataFrame(columns=["#Fraction", "Plan_image", "Plan_name", "t_plan_generation (min)", "t_plan_optimization (min)"])
         all_results = pd.DataFrame(columns=["Patient", "Plan_name", "ClinicalGoal", "Value"])
         all_patients_results = all_results
 
         for model in model_list:
             delete_all_dose_evaluations()
             model_paramters = read_model_param(model)
+            
+            possible_plans = []
+            delivery_schedule_df = pd.DataFrame(columns=['#Fraction', 'CBCT_name', "Delivered_plan_name", "Needs_new_plan"])
 
             for i in range(len(schedule)):
 
@@ -108,6 +110,10 @@ def main():
                 
                 if model.startswith("0"):
                     needs_adapt = 0
+                
+                if adaptation_strategy == "Daily_adapt":
+                    needs_adapt = 1
+
                     
                 print(n_fx, adapt_image_name, needs_adapt)
 
@@ -121,6 +127,8 @@ def main():
                     print("The adaptation image already exist: ", adapt_image_name)
                 
                 auto_plan_name = model_paramters['Alias'] + cbct_name
+                needs_new_plan = 0
+
                 
                 #initialisation
                 auto_planning = CreateIMPTPlan(adapt_image_name, auto_plan_name, 
@@ -130,24 +138,58 @@ def main():
                                                         model_paramters['DoseGrid'], 
                                                         model_paramters['Needs_reference_dose'])
                 
-                print('Model parameters: ', model_paramters)
+                adaptation_strategy = adaptation_strategy_init
+                print('Adaption strategy: ', adaptation_strategy)
+
                 if needs_adapt == 1:
 
                     print("Adaptation is needed for ", adapt_image_name)
+                    print(possible_plans)
+
+                    if len(possible_plans) < 1:
+                        adaptation_strategy = 'Daily_adapt'
+
+                    if adaptation_strategy == 'Last_plan':
+                        print('Lets evaluate the LAST adapted plan')
+                        last_plan_name = possible_plans[-1]
+                        init_adapt = NeedsAdaptation(adapt_image_name, last_plan_name)
+                        adapt_needed = init_adapt.check_adaptation_needed()
+                        print(adapt_needed, type(adapt_needed))
+
+                        if adapt_needed == True:
+                            delivered_plan = auto_plan_name
+                            case.TreatmentPlans[auto_plan_name].BeamSets[0].ComputeDoseOnAdditionalSets(OnlyOneDosePerImageSet=False, AllowGridExpansion=True, ExaminationNames=[adapt_image_name], FractionNumbers=[0], ComputeBeamDoses=True)
+                        else:
+                            delivered_plan = last_plan_name
+                            print('We keep the LAST plan ', last_plan_name,  ' as the delivered plan for adaptation image : ', adapt_image_name )
                     
-                    if auto_plan_name not in plan_names:
-                        #run planning
-                        t_plan_generation, t_plan_optimization = auto_planning.create_run_and_approve_IMPT_plan()
+                    elif adaptation_strategy == 'Best_plan':
+                        print('Lets find the BEST plan')
+                        init_adapt = NeedsAdaptation(adapt_image_name, possible_plans[0])
+                        best_plan_name, adapt_needed = init_adapt.find_best_plan_and_check_adapt(possible_plans)
 
-                        df_timing = df_timing.append({'#Fraction': n_fx, 'Plan_image': adapt_image_name, 'Plan_name': auto_plan_name,
+                        print('The best plan is : ', best_plan_name, ' Adaptation is needed : ', adapt_needed, type(adapt_needed))
+
+                        if adapt_needed == True:
+                            delivered_plan = auto_plan_name
+                            case.TreatmentPlans[auto_plan_name].BeamSets[0].ComputeDoseOnAdditionalSets(OnlyOneDosePerImageSet=False, AllowGridExpansion=True, ExaminationNames=[adapt_image_name], FractionNumbers=[0], ComputeBeamDoses=True)
+                        else:
+                            delivered_plan = best_plan_name
+                            print('We keep the BEST plan ', best_plan_name,  ' as the delivered plan for adaptation image : ', adapt_image_name )
+                    
+                    elif adaptation_strategy == 'Daily_adapt':
+                        delivered_plan = auto_plan_name
+                        if auto_plan_name not in plan_names:
+                            #run planning
+                            t_plan_generation, t_plan_optimization = auto_planning.create_run_and_approve_IMPT_plan()
+                            df_timing = df_timing.append({'#Fraction': n_fx, 'Plan_image': adapt_image_name, 'Plan_name': auto_plan_name,
                                         't_plan_generation (min)': t_plan_generation/60, 't_plan_optimization (min)': t_plan_optimization/60}, ignore_index=True)
+                            plan_names.append(auto_plan_name)
+            
+                        case.TreatmentPlans[auto_plan_name].BeamSets[0].ComputeDoseOnAdditionalSets(OnlyOneDosePerImageSet=False, AllowGridExpansion=True, ExaminationNames=[adapt_image_name], FractionNumbers=[0], ComputeBeamDoses=True)
 
-                        plan_names.append(auto_plan_name)
-                        print(plan_names)
-
-                    case.TreatmentPlans[auto_plan_name].BeamSets[0].ComputeDoseOnAdditionalSets(OnlyOneDosePerImageSet=False, AllowGridExpansion=True, ExaminationNames=[adapt_image_name], FractionNumbers=[0], ComputeBeamDoses=True)
-                
                 elif needs_adapt == 0:
+                    delivered_plan = initial_plan
                     print("Adaptation is not needed for ", adapt_image_name,". I will recompute the initial plan")
                     
                     case.TreatmentPlans[initial_plan].BeamSets[0].ComputeDoseOnAdditionalSets(
@@ -155,12 +197,21 @@ def main():
                     
                     #run DIR for dose deformation
                     auto_planning.run_DIR_pCT_adapt_image()
-
+                
+                if delivered_plan == auto_plan_name:
+                    needs_new_plan = 1
+                
+                
+                if delivered_plan not in possible_plans and delivered_plan.startswith(model_paramters['Alias']):
+                    possible_plans.append(delivered_plan)
+                
+                delivery_schedule_df = delivery_schedule_df.append({'#Fraction': n_fx, 'CBCT_name': adapt_image_name, 'Delivered_plan_name': delivered_plan,'Needs_new_plan': needs_new_plan}, ignore_index=True)
+                print(delivery_schedule_df)
+                print(possible_plans)
+                
                 # fraction on dose
                 dose_on_examination = find_dose_on_examination(adapt_image_name)
                 fx_dose = dose_on_examination.DoseEvaluations[0]
-                print(fx_dose)
-                print(dose_on_examination.DoseEvaluations[0])
 
                 # map fraction dose
                 try:
@@ -197,18 +248,22 @@ def main():
             results.to_excel(results_file, engine='openpyxl')
 
             all_results = all_results.append(results)
+
+            #write delivery schedule
+            delivery_file = join(stats_folder, patient.Name + "_delivery_for_" + oa_strategy + ".xlsx")
+            delivery_schedule_df.to_excel(delivery_file, engine='openpyxl')
+
+            # export timing strategies and all fractions
+            print('Timing data frame: ', df_timing)
+            if len(df_timing) != 0:
+                export_file = join(stats_folder, patient.Name  + '_' + oa_strategy + "_timing.xlsx")
+                df_timing.to_excel(export_file, engine='openpyxl')
         
         # export results for all strategies and sum over fractions
         all_results_file = join(stats_folder, patient.Name + "_all_strategies" + ".xlsx")
         all_results.to_excel(all_results_file, engine='openpyxl')
 
         all_patients_results = all_patients_results.append(all_results)
-
-        # export timing for all strategies and all fractions
-        print('Tiiming data frame: ', df_timing)
-        if len(df_timing) != 0:
-            export_file = join(timing_folder, patient.Name + "_timing.xlsx")
-            df_timing.to_excel(export_file, engine='openpyxl')
 
     #export results for all patients, all strategies and sum over fractions
     all_patient_results_file = join(stats_folder,"results_all_strategies_all_patients" + ".xlsx")

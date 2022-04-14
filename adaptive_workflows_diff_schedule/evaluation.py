@@ -202,7 +202,113 @@ class EvaluationPlanningDose:
             print(self.df_results)
 
             return self.df_results
+            
+class NeedsAdaptation:
 
+    def __init__(self, adapt_image_name, reference_plan_name):
+
+        self.adapt_image_name = adapt_image_name
+        self.reference_plan_name = reference_plan_name
+        self.case = get_current("Case")
+        self.patient = get_current("Patient")
+
+    def evaluate_dose_examination(self):
+
+        beam_set_eval = self.case.TreatmentPlans[self.reference_plan_name].BeamSets[0]
+        beam_set_eval.ComputeDoseOnAdditionalSets(OnlyOneDosePerImageSet=False, AllowGridExpansion=True, ExaminationNames=[
+                                                  self.adapt_image_name], FractionNumbers=[0], ComputeBeamDoses=True)
+
+    def find_dose_evaluation(self):
+
+        for doe in self.case.TreatmentDelivery.FractionEvaluations[0].DoseOnExaminations:
+            if doe.OnExamination.Name == self.adapt_image_name:
+                self.dose_on_examination = doe
+
+        return self.dose_on_examination
+
+    def delete_eval_dose(self):
+        self.dose_eval.DeleteEvaluationDose()
+    
+    def find_best_plan_and_check_adapt(self,plan_list):
+
+        abs_difference = 10000
+        best_plan_name = None
+        adaptation_needed = True
+        
+        for plan in plan_list:
+            beam_set_eval = self.case.TreatmentPlans[plan].BeamSets[0]
+            beam_set_eval.ComputeDoseOnAdditionalSets(OnlyOneDosePerImageSet=False, AllowGridExpansion=True, ExaminationNames=[
+                                                  self.adapt_image_name], FractionNumbers=[0], ComputeBeamDoses=True)
+            doe = self.find_dose_evaluation()
+
+            for dose_eval in doe.DoseEvaluations:
+                if dose_eval.ForBeamSet.DicomPlanLabel == plan:
+
+                    ctv_high_coverage = dose_eval.GetDoseAtRelativeVolumes(RoiName="CTV_7000", RelativeVolumes=[0.98])*35
+                    ctv_low_coverage = dose_eval.GetDoseAtRelativeVolumes(RoiName="CTV_5425", RelativeVolumes=[0.98])*35
+
+                    abs_difference_i = abs(ctv_high_coverage[0] - 6650) + abs(ctv_low_coverage[0] - 5125)
+                    ctv_high_bool = ctv_high_coverage[0] < 6650
+                    ctv_low_bool = ctv_low_coverage[0] < 5125
+                    adaptation_needed_i = ctv_high_bool or ctv_low_bool
+
+                    print(abs_difference_i,abs_difference,adaptation_needed_i, ctv_high_bool, ctv_low_bool)
+
+                    if abs_difference_i < abs_difference and adaptation_needed_i == False:
+                        abs_difference = abs_difference_i
+                        best_plan_name = plan
+                        adaptation_needed = adaptation_needed_i 
+                        print('The plan ', plan, ' is a good candidate. I updated the values: abs diff: ', abs_difference, 'Best potential plan: ', best_plan_name)
+                    
+                    elif abs_difference_i > abs_difference and adaptation_needed_i == False:
+                        print('There is better plan than ', plan)
+
+                    else:
+                        print('The plan ', plan, ' requires adaptation', adaptation_needed_i)
+                        dose_eval.DeleteEvaluationDose()
+            
+        if adaptation_needed == True:
+            print("ADAPT needed, none of the previous plans is good enough, a new plan is needed for the fraction corresponding to ", self.adapt_image_name)
+            for dose_eval in reversed(doe.DoseEvaluations):
+                dose_eval.DeleteEvaluationDose()
+
+        elif adaptation_needed == False:
+            print("A new plan is NOT required for the fraction corresponding to ", self.adapt_image_name, " the best adapted plan will be delivered : ", best_plan_name)
+            for dose_eval in reversed(doe.DoseEvaluations):
+                if dose_eval.ForBeamSet.DicomPlanLabel != best_plan_name:
+                    dose_eval.DeleteEvaluationDose()
+        else:
+            print('Adaptation value is not boolean', adaptation_needed)
+
+        return best_plan_name, adaptation_needed
+
+    def check_adaptation_needed(self):
+
+        self.evaluate_dose_examination()
+        self.find_dose_evaluation()
+
+        for dose_eval in self.dose_on_examination.DoseEvaluations:
+            if dose_eval.ForBeamSet.DicomPlanLabel == self.reference_plan_name:
+                self.dose_eval = dose_eval
+
+                ctv_high_coverage = self.dose_eval.GetDoseAtRelativeVolumes(RoiName="CTV_7000", RelativeVolumes=[0.98])*35
+                ctv_low_coverage = self.dose_eval.GetDoseAtRelativeVolumes(RoiName="CTV_5425", RelativeVolumes=[0.98])*35
+
+                ctv_high_bool = ctv_high_coverage < 6650
+                ctv_low_bool = ctv_low_coverage < 5125
+
+       
+        adaptation_needed = ctv_high_bool or ctv_low_bool
+        print(adaptation_needed,ctv_high_bool,ctv_low_bool)
+
+        if adaptation_needed:
+            print("A new plan is needed for the fraction corresponding to ", self.adapt_image_name)
+            self.delete_eval_dose()
+
+        else:
+            print("A new plan is NOT required for the fraction corresponding to ", self.adapt_image_name)
+
+        return adaptation_needed
 """
 class EvaluatePlan:
 

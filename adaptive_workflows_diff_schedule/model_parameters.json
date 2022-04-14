@@ -1,0 +1,37 @@
+{  "0_NoAdapt": {
+  "OAStrategy": "0_NoAdapt",
+  "Alias": "0_NA",
+  "ModelName": "None",
+  "ModelStrategy": "None",
+  "ROI_mapping": "None",
+  "DoseGrid": "None",
+  "Needs_reference_dose": "False"
+},
+  "1_AutoRS_def_rois": {
+      "OAStrategy": "1_RSpred_RSmim_def_rois",
+      "Alias": "1_Auto_",
+      "ModelName": "RSL_IMPT_conv_img",
+      "ModelStrategy": "IMPT Demo",
+      "ROI_mapping": "DIR",
+      "DoseGrid": "Default",
+      "Needs_reference_dose": "False"
+  },
+  "2_MimClin_rr_rois": {
+    "OAStrategy": "2_Mimick_ClinDose_rr_rois",
+    "Alias": "2_MimCl_",
+    "ModelName": "Only_mimicking_conv_img",
+    "ModelStrategy": "IMPT Demo",
+    "ROI_mapping": "RigidReg",
+    "DoseGrid": "Copy_from_plan",
+    "Needs_reference_dose": "True"
+  },
+  "3_MimDef_def_rois": {
+    "OAStrategy": "3_Mimick_DefDose_def_rois",
+    "Alias": "3_MimDef_",
+    "ModelName": "Only_mimicking_conv_img",
+    "ModelStrategy": "IMPT Demo",
+    "ROI_mapping": "DIR",
+    "DoseGrid": "Copy_from_plan",
+    "Needs_reference_dose": "True"
+  }
+}

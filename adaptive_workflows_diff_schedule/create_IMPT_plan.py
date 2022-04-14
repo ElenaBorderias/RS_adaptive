@@ -153,12 +153,8 @@ class CreateIMPTPlan:
         AG = [6.0]*len(BN)  # Minimum Air GAP
 
         if self.patient.Name == "ANON37":
-            #RS = ["RS40", "","RS40","RS40"]
-            RS = ["RS40", None,"RS40","RS40"]
-
-        #for i,beam in enumerate(self.reference_plan.BeamSets[0].Beams):
-            #RS[i] = beam.RangeShifterId
-        
+            RS = ["RS40", "","RS40","RS40"]
+            #RS = ["RS40", None,"RS40","RS40"]
         energy_layer_sep_factor = 0.9  # energy layer separation factor
         energy_selection_mode = "Automatic"
         fixed_spot_tune_id = "3.0"
