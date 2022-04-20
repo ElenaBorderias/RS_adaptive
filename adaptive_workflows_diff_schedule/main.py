@@ -1,6 +1,7 @@
 
 from enum import auto
 import imp
+from mimetypes import init
 from connect import get_current
 from create_IMPT_plan import CreateIMPTPlan
 from create_virtual_ct_from_cbct import CreateConvertedImage
@@ -62,7 +63,7 @@ def main():
         patient = get_current("Patient")
         pct_name = "pCT"
         initial_plan = "ML_IMPT_plan"
-        adaptation_strategy_init = "Best_plan"
+        adaptation_strategy_init = "Last_plan"
         results_planning = evaluate_initial_planning(initial_plan)
 
         treatment_schedule_folder = "C:\\Elena\\results\\treatment_schedules"
@@ -91,6 +92,7 @@ def main():
                                     'Needs_adaptation', 'Needs_adaptation_0_1']]
 
         #dataframe initialisations
+        df_timing = pd.DataFrame(columns=["#Fraction", "Plan_image", "Plan_name", "t_plan_generation (min)", "t_plan_optimization (min)"])
         all_results = pd.DataFrame(columns=["Patient", "Plan_name", "ClinicalGoal", "Value"])
         all_patients_results = all_results
 
@@ -111,7 +113,7 @@ def main():
                 if model.startswith("0"):
                     needs_adapt = 0
                 
-                if adaptation_strategy == "Daily_adapt":
+                if adaptation_strategy_init == "Daily_adapt":
                     needs_adapt = 1
 
                     
