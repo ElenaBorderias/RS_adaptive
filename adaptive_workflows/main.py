@@ -45,9 +45,9 @@ def main():
     except:
         print("No patient loaded")
 
-    #patient_list = ["ANON6","ANON12","ANON16","ANON18","ANON26","ANON29","ANON34","ANON37","ANON38","ANON43"]
-    patient_list = ["ANON37","ANON26","ANON18"]
-    model_list = ["1_AutoRS_def_rois", "2_MimClin_rr_rois","3_MimDef_def_rois"]
+    patient_list = ["ANON12","ANON16","ANON18","ANON26","ANON29","ANON34","ANON37","ANON38","ANON43","ANON6"]
+    #patient_list = ["ANON37","ANON26","ANON18"]
+    model_list = ["0_NoAdapt","1_AutoRS_def_rois", "2_MimClin_rr_rois","3_MimDef_def_rois"]
     #model_list = ["0_NoAdapt","1_AutoRS_def_rois", "2_MimClin_rr_rois","3_MimDef_def_rois"]
     #adapt_strategy = ["Iniital_plan_pct", "Last_plan_rcts", "Best_of_plans_rcts"]
 
@@ -64,9 +64,9 @@ def main():
         initial_plan = "ML_IMPT_plan"
         results_planning = evaluate_initial_planning(initial_plan)
 
-        treatment_schedule_folder = "C:\\Elena\\results\\treatment_schedules"
-        timing_folder = "C:\\Elena\\results\\timing"
-        stats_folder = "C:\\Elena\\results\\dose_statistics"
+        treatment_schedule_folder = "C:\\Elena\\results_NTCP\\treatment_schedules"
+        timing_folder = "C:\\Elena\\results_NTCP\\timing"
+        stats_folder = "C:\\Elena\\results_NTCP\\dose_statistics"
 
         #export initial planning results
         results_planning_file = join(stats_folder, patient.Name + "_initial_planning.xlsx")

@@ -185,23 +185,23 @@ class EvaluationSummedDose:
         self.append_clinical_goal_to_df("BODY_D0_03cc",body_D_0_03)
 
         #HI
-        HI_CTV_7000 = round((ctv_high_D2 - ctv_high_D98)/70,2)
+        HI_CTV_7000 = round((ctv_high_D2 - ctv_high_D98)/7000,2)
         self.append_clinical_goal_to_df("HI_CTV_7000",HI_CTV_7000)
 
-        HI_CTV_5425 = round((ctv_low_D02 - ctv_low_D98)/54.25,2)
+        HI_CTV_5425 = round((ctv_low_D02 - ctv_low_D98)/5425,2)
         self.append_clinical_goal_to_df("HI_CTVn_5425",HI_CTV_5425)
 
         #NTCP
         Volume_SubmL = self.case.PatientModel.StructureSets['pCT'].RoiGeometries["Submandibular_L"].GetRoiVolume()
         Volume_SubmR = self.case.PatientModel.StructureSets['pCT'].RoiGeometries["Submandibular_R"].GetRoiVolume()
-        Dmean_ParL = parotid_L_Dmean
-        Dmean_ParR = parotid_R_Dmean
-        Dmean_SubmL = submand_L_Dmean
-        Dmean_SubmR = submand_R_Dmean
-        Dmean_Coral = oral_cavity_Dmean
-        Dmean_PCMSup = pcm_sup_Dmean
-        Dmean_PCMMed = pcm_mid_Dmean
-        Dmean_PCMInf = pcm_inf_Dmean
+        Dmean_ParL = parotid_L_Dmean*0.01
+        Dmean_ParR = parotid_R_Dmean*0.01
+        Dmean_SubmL = submand_L_Dmean*0.01
+        Dmean_SubmR = submand_R_Dmean*0.01
+        Dmean_Coral = oral_cavity_Dmean*0.01
+        Dmean_PCMSup = pcm_sup_Dmean*0.01
+        Dmean_PCMMed = pcm_mid_Dmean*0.01
+        Dmean_PCMInf = pcm_inf_Dmean*0.01
 
         xero_grade2 = self.NTCP_definitive_xero_grade2(self.baseline, Dmean_ParL, Dmean_ParR, Dmean_SubmL, Dmean_SubmR, Volume_SubmL, Volume_SubmR)
         xero_grade3 = self.NTCP_definitive_xero_grade3(self.baseline, Dmean_ParL, Dmean_ParR, Dmean_SubmL, Dmean_SubmR, Volume_SubmL, Volume_SubmR)
@@ -246,6 +246,70 @@ class EvaluationPlanningDose:
         
         def init_data_frame_results(self):
             self.df_results = pd.DataFrame(columns=["Patient", "Plan_name", "ClinicalGoal", "Value"])
+
+        # baseline_score: 0 not at all (EORTC QLQ-H&N35 Q41 score 1), 1 a bit (score 2), 2 moderate-severe (score 3-4)
+        def NTCP_definitive_xero_grade2(self,baseline_score, Dmean_ParL, Dmean_ParR, Dmean_SubmL, Dmean_SubmR, Volume_SubmL, Volume_SubmR):
+            beta={}
+            beta["Constant"] = self.modelparams_definitive_xero_grade2["beta0"]+self.modelparams_definitive_xero_grade2["beta_baseline"][baseline_score]
+            beta["Parotid"] = self.modelparams_definitive_xero_grade2["beta_Parotid"]
+            beta["Subm"] = self.modelparams_definitive_xero_grade2["beta_Subm"]
+
+            Dmean_SubmComb=(Dmean_SubmL*Volume_SubmL+Dmean_SubmR*Volume_SubmR)/(Volume_SubmL+Volume_SubmR)
+            Dmean_ParComb=np.sqrt(Dmean_ParL) + np.sqrt(Dmean_ParR)
+            
+            S=beta["Constant"]+beta["Parotid"]*Dmean_ParComb+beta["Subm"]*Dmean_SubmComb
+            
+            NTCP=1/(1+np.exp(-S))
+            
+            return NTCP
+
+        # baseline_score: 0 not at all (EORTC QLQ-H&N35 Q41 score 1), 1 a bit (score 2), 2 moderate-severe (score 3-4)
+        def NTCP_definitive_xero_grade3(self,baseline_score, Dmean_ParL, Dmean_ParR, Dmean_SubmL, Dmean_SubmR, Volume_SubmL, Volume_SubmR):
+            beta={}
+            beta["Constant"] = self.modelparams_definitive_xero_grade3["beta0"]+self.modelparams_definitive_xero_grade3["beta_baseline"][baseline_score]
+            beta["Parotid"] = self.modelparams_definitive_xero_grade3["beta_Parotid"]
+            beta["Subm"] = self.modelparams_definitive_xero_grade3["beta_Subm"]
+
+            Dmean_SubmComb=(Dmean_SubmL*Volume_SubmL+Dmean_SubmR*Volume_SubmR)/(Volume_SubmL+Volume_SubmR)
+            Dmean_ParComb=np.sqrt(Dmean_ParL) + np.sqrt(Dmean_ParR)
+            
+            S=beta["Constant"]+beta["Parotid"]*Dmean_ParComb+beta["Subm"]*Dmean_SubmComb
+            
+            NTCP=1/(1+np.exp(-S))
+            
+            return NTCP
+
+        # baseline_score: 0 grade 0-I, 1 grade II, 2 grade III-IV
+        # location: 0 oral cavity, 1 farynx, 2 larynx
+        def NTCP_definitive_dysf_grade2(self,baseline_score, Dmean_Coral, Dmean_PCMSup, Dmean_PCMMed, Dmean_PCMInf, location):
+            beta={}
+            beta["Constant"]=self.modelparams_dysf_definitive_grade2["beta0"]+self.modelparams_dysf_definitive_grade2["beta_baseline"][baseline_score]+self.modelparams_dysf_definitive_grade2["beta_location"][location]
+            beta["Coral"]=self.modelparams_dysf_definitive_grade2["beta_Coral"]
+            beta["PCMSup"]=self.modelparams_dysf_definitive_grade2["beta_PCMSup"]
+            beta["PCMMed"]=self.modelparams_dysf_definitive_grade2["beta_PCMMed"]
+            beta["PCMInf"]=self.modelparams_dysf_definitive_grade2["beta_PCMInf"]
+                
+            S=beta["Constant"]+beta["Coral"]*Dmean_Coral+beta["PCMSup"]*Dmean_PCMSup+beta["PCMMed"]*Dmean_PCMMed+beta["PCMInf"]*Dmean_PCMInf
+            
+            NTCP=1/(1+np.exp(-S))
+            
+            return NTCP
+
+        # baseline_score: 0 grade 0-I, 1 grade II, 2 grade III-IV
+        # location: 0 oral cavity, 1 farynx, 2 larynx
+        def NTCP_definitive_dysf_grade3(self,baseline_score, Dmean_Coral, Dmean_PCMSup, Dmean_PCMMed, Dmean_PCMInf, location):
+            beta={}
+            beta["Constant"]=self.modelparams_dysf_definitive_grade3["beta0"]+self.modelparams_dysf_definitive_grade3["beta_baseline"][baseline_score]+self.modelparams_dysf_definitive_grade3["beta_location"][location]
+            beta["Coral"]=self.modelparams_dysf_definitive_grade3["beta_Coral"]
+            beta["PCMSup"]=self.modelparams_dysf_definitive_grade3["beta_PCMSup"]
+            beta["PCMMed"]=self.modelparams_dysf_definitive_grade3["beta_PCMMed"]
+            beta["PCMInf"]=self.modelparams_dysf_definitive_grade3["beta_PCMInf"]
+                
+            S=beta["Constant"]+beta["Coral"]*Dmean_Coral+beta["PCMSup"]*Dmean_PCMSup+beta["PCMMed"]*Dmean_PCMMed+beta["PCMInf"]*Dmean_PCMInf
+            
+            NTCP=1/(1+np.exp(-S))
+            
+            return NTCP
         
         def evaluate_dose_statistics(self):
 
@@ -321,11 +385,34 @@ class EvaluationPlanningDose:
             self.append_clinical_goal_to_df("BODY_D0_03cc",body_D_0_03)
 
             #HI
-            HI_CTV_7000 = round((ctv_high_D2 - ctv_high_D98)/70,2)
+            HI_CTV_7000 = round((ctv_high_D2 - ctv_high_D98)/7000,2)
             self.append_clinical_goal_to_df("HI_CTV_7000",HI_CTV_7000)
 
-            HI_CTV_5425 = round((ctv_low_D02 - ctv_low_D98)/54.25,2)
+            HI_CTV_5425 = round((ctv_low_D02 - ctv_low_D98)/5425,2)
             self.append_clinical_goal_to_df("HI_CTVn_5425",HI_CTV_5425)
+
+
+            #NTCP
+            Volume_SubmL = self.case.PatientModel.StructureSets['pCT'].RoiGeometries["Submandibular_L"].GetRoiVolume()
+            Volume_SubmR = self.case.PatientModel.StructureSets['pCT'].RoiGeometries["Submandibular_R"].GetRoiVolume()
+            Dmean_ParL = parotid_L_Dmean*0.01
+            Dmean_ParR = parotid_R_Dmean*0.01
+            Dmean_SubmL = submand_L_Dmean*0.01
+            Dmean_SubmR = submand_R_Dmean*0.01
+            Dmean_Coral = oral_cavity_Dmean*0.01
+            Dmean_PCMSup = pcm_sup_Dmean*0.01
+            Dmean_PCMMed = pcm_mid_Dmean*0.01
+            Dmean_PCMInf = pcm_inf_Dmean*0.01
+
+            xero_grade2 = self.NTCP_definitive_xero_grade2(self.baseline, Dmean_ParL, Dmean_ParR, Dmean_SubmL, Dmean_SubmR, Volume_SubmL, Volume_SubmR)
+            xero_grade3 = self.NTCP_definitive_xero_grade3(self.baseline, Dmean_ParL, Dmean_ParR, Dmean_SubmL, Dmean_SubmR, Volume_SubmL, Volume_SubmR)
+            dysf_grade2 = self.NTCP_definitive_dysf_grade2(self.baseline, Dmean_Coral, Dmean_PCMSup, Dmean_PCMMed, Dmean_PCMInf, self.location)
+            dysf_grade3 = self.NTCP_definitive_dysf_grade3(self.baseline, Dmean_Coral, Dmean_PCMSup, Dmean_PCMMed, Dmean_PCMInf, self.location)
+
+            self.append_clinical_goal_to_df("xero_grade2",xero_grade2)
+            self.append_clinical_goal_to_df("xero_grade3",xero_grade3)
+            self.append_clinical_goal_to_df("dysf_grade2",dysf_grade2)
+            self.append_clinical_goal_to_df("dysf_grade3",dysf_grade3)
 
             print(self.df_results)
 
