@@ -1,0 +1,42 @@
+{  
+  "ANON6": {
+  "CT1": "Corrected CBCT 04",
+  "CT2": "Corrected CBCT 26"
+  },
+  "ANON12": {
+  "CT1": "Corrected CBCT 16",
+  "CT2": "Corrected CBCT 28"
+  },
+  "ANON16": {
+    "CT1": "Corrected CBCT 10",
+    "CT2": "Corrected CBCT 31"
+  },
+  "ANON18": {
+    "CT1": "Corrected CBCT 25",
+    "CT2": "Corrected CBCT 31"
+  },
+  "ANON26": {
+    "CT1": "Corrected CBCT 13",
+    "CT2": "Corrected CBCT 31"
+  },
+  "ANON29": {
+    "CT1": "Corrected CBCT 16",
+    "CT2": "Corrected CBCT 32"
+  },
+  "ANON34": {
+    "CT1": "Corrected CBCT 05",
+    "CT2": "Corrected CBCT 34"
+  },
+  "ANON37": {
+    "CT1": "Corrected CBCT 09",
+    "CT2": "Corrected CBCT 28"
+  },
+  "ANON38": {
+    "CT1": "Corrected CBCT 14",
+    "CT2": "Corrected CBCT 34"
+  },
+  "ANON43": {
+    "CT1": "Corrected CBCT 07",
+    "CT2": "Corrected CBCT 29"
+  }
+}

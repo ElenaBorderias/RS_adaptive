@@ -24,6 +24,7 @@ class CreateIMPTPlan:
         self.case = get_current("Case")
         self.patient = get_current("Patient")
         self.machine_learning_db = get_current("MachineLearningDB")
+        self.machine_learning_db = get_current("MachineLearningDB")
         self.ml_models_info = self.machine_learning_db.QueryMachineLearningModelInfo()
 
         self.map_rois_strategy = map_rois_strategy # "DIR", "RigidReg"
