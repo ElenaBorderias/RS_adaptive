@@ -225,8 +225,8 @@ class EvaluationPlanningDose:
             self.plan_name = plan_name
             self.dose_eval = self.case.TreatmentPlans[self.plan_name].PlanOptimizations[0].TreatmentCourseSource.TotalDose
 
-            self.baseline = 0
-            self.location = 0
+            self.baseline = 2
+            self.location = 1
 
             ## DO NOT TOUCH ##
 
@@ -420,7 +420,7 @@ class EvaluationPlanningDose:
 
 class EvaluationPlanningDose_real_contours:
 
-        def __init__(self,plan_name,ct_name, ct_index):
+        def __init__(self,plan_name,ct_name, ct_index,real_contours):
 
             self.case = get_current("Case")
             self.patient = get_current("Patient")
@@ -429,6 +429,8 @@ class EvaluationPlanningDose_real_contours:
             self.strategy = plan_name[:-8]
             self.ct_name = ct_name
             self.ct_index = ct_index
+            self.real_contours = real_contours
+
             
             if self.plan_name.startswith('0'):
                 for doe in self.case.TreatmentDelivery.FractionEvaluations[0].DoseOnExaminations:
@@ -437,8 +439,8 @@ class EvaluationPlanningDose_real_contours:
             else:
                 self.dose_eval = self.case.TreatmentPlans[self.plan_name].PlanOptimizations[0].TreatmentCourseSource.TotalDose
 
-            self.baseline = 0
-            self.location = 0
+            self.baseline = 2
+            self.location = 1
 
             ## DO NOT TOUCH ##
 
@@ -528,10 +530,13 @@ class EvaluationPlanningDose_real_contours:
             return NTCP
         
         def get_correspondant_roi_name(self,ref_roi):
-            if self.ct_index == 1:
-                new_roi_name = 'eval_' + ref_roi + ' (1)'
-            if self.ct_index == 2:
-                new_roi_name = 'eval_' + ref_roi + ' (2)'
+            if self.real_contours == 1:
+                if self.ct_index == 1:
+                    new_roi_name = 'eval_' + ref_roi + ' (1)'
+                if self.ct_index == 2:
+                    new_roi_name = 'eval_' + ref_roi + ' (2)'
+            else:
+                new_roi_name = ref_roi
             
             return new_roi_name
 
@@ -643,30 +648,3 @@ class EvaluationPlanningDose_real_contours:
             print(self.df_results)
 
             return self.df_results
-
-"""
-class EvaluatePlan:
-
-    def __init__(self, adapt_image_name, adap_strategy):
-
-        self.adapt_image_name = adapt_image_name
-        self.reference_plan_name = reference_plan_name
-        self.case = get_current("Case")
-        self.patient = get_current("Patient")***
-
-        self.ctv_names = ["CTVnR_5425", "CTVnL_5425", "CTVp_5425", "CTVp_7000", "CTV_5425", "CTV_7000", "CTV_all"]
-
-        self.oar_names_def =["Mandible", "Esophagus", "SpinalCord", "Parotid_R", "Parotid_L", "Larynx", "Submandibular_L", "Submandibular_R", "Brainstem",
-                            "Oral_Cavity", "Cochlea_R", "Cochlea_L", "Retina_R", "Retina_L", "PharConsSup", "PharConsMid", "PharConsInf"]
-
-        self.oar_names_predict =  []
-
-    def map__rois(self): 
-        self.case.MapRoiGeometriesDeformably(RoiGeometry= self.ctv_names + self.oar_names_def, CreateNewRois=False, 
-                                                StructureRegistrationGroupNames=["HybridDefReg"], 
-                                                ReferenceExaminationNames=["pCT"], TargetExaminationNames=[self.adapt_image_name], 
-                                                ReverseMapping=False, AbortWhenBadDisplacementField=True)
-
-    def export_clinical_goals(self):
-        return 
-"""

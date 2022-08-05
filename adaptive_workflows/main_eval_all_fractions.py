@@ -3,7 +3,7 @@ import imp
 from connect import get_current
 from create_IMPT_plan import CreateIMPTPlan
 from create_virtual_ct_from_cbct import CreateConvertedImage
-from evaluation import EvaluationPlanningDose_real_contours
+from evaluation import EvaluationPlanningDose, EvaluationPlanningDose_real_contours
 from Patients import Patient
 import pandas as pd
 from os.path import join
@@ -24,10 +24,12 @@ def read_model_param(model_name):
     return properties[model_name]
 
 def read_patient_ct_list(patient_name):
-    _f = open('patients_parameters.json')
-    properties = json.load(_f)
-    _f.close()
-    return properties[patient_name]
+    path =  'C:\\Elena\\results_NTCP\\treatment_schedules'
+    patient_path = join(path,patient_name+'_ttmt_schedule.xlsx')
+    patient_info = pd.read_excel(patient_path)
+    repeated_images_list = patient_info['CBCT_name']
+    adaptation_schedule =  patient_info['Needs_adaptation_0_1']
+    return repeated_images_list, adaptation_schedule
 
 def delete_all_dose_evaluations():
     case = get_current("Case")
@@ -46,10 +48,9 @@ def main():
     except:
         print("No patient loaded")
 
-
     #patient_list = ["ANON12","ANON16","ANON18","ANON26","ANON29","ANON34","ANON37","ANON38","ANON43","ANON6"]
     #patient_list = ["ANON37","ANON26","ANON18"]
-    patient_list = ["ANON29","ANON34"]
+    patient_list = ["ANON34","ANON37","ANON38","ANON43","ANON6"]
     model_list = ["0_NoAdapt","1_AutoRS_def_rois", "2_MimClin_rr_rois","3_MimDef_def_rois"]
     
     for patient_name in patient_list:
@@ -64,7 +65,7 @@ def main():
 
         plan_names = [plan.Name for plan in case.TreatmentPlans]
 
-        stats_folder = "C:\\Elena\\results_real_contours\\dose_statistics"
+        stats_folder = "C:\\Elena\\results_all_fractions\\dose_statistics"
 
         """
         oars_model = [r"Brainstem", r"SpinalCord",
@@ -83,21 +84,20 @@ def main():
         all_results = pd.DataFrame(columns=["Patient", "Strategy","Adapt_image","Plan_name", "ClinicalGoal", "Value"])
         all_patients_results = all_results
 
-        pat_ct_info = read_patient_ct_list(patient.Name)
-        ct_list = [pat_ct_info['CT1'], pat_ct_info['CT2']]
-
+        ct_list, adapt_schedule = read_patient_ct_list(patient.Name)
 
         for model in model_list:
             model_paramters = read_model_param(model)
             print(' EVALUATION ', model)
 
-            all_ct_results = pd.DataFrame(columns=["Patient", "Strategy","Adapt_image","Plan_name", "ClinicalGoal", "Value"])
+            all_ct_results = pd.DataFrame(columns=["Patient", "Strategy","Adapt_image","Plan_name", "ClinicalGoal", "Value","Needs_adapt","#Fraction"])
 
             for i,adapt_image_name in enumerate(ct_list):
                 delete_all_dose_evaluations()
                 cbct_name = adapt_image_name[-7:]
                 print('Adaptation image: ', adapt_image_name)
                 print('CBCT: ', cbct_name)
+                bool_adapt = adapt_schedule[i]
 
                 auto_plan_name = model_paramters['Alias'] + cbct_name
                 
@@ -105,8 +105,10 @@ def main():
                     print('Running evaluation of ', model)
                     case.TreatmentPlans['ML_IMPT_plan'].BeamSets[0].ComputeDoseOnAdditionalSets(OnlyOneDosePerImageSet=False, AllowGridExpansion=True, ExaminationNames=[adapt_image_name], FractionNumbers=[0], ComputeBeamDoses=True)
                     oa_strategy = model_paramters['OAStrategy']
-                    evaluation = EvaluationPlanningDose_real_contours(auto_plan_name,adapt_image_name,i+1)
+                    evaluation = EvaluationPlanningDose_real_contours(auto_plan_name,adapt_image_name,i+1,0)
                     results = evaluation.evaluate_dose_statistics()
+                    results['Needs_adapt'] = [bool_adapt]*len(results['Patient'])
+                    results['#Fraction'] = [i+1]*len(results['Patient'])
 
                 else:
                     #initialisation
@@ -116,23 +118,34 @@ def main():
                                                             model_paramters['ROI_mapping'], 
                                                             model_paramters['DoseGrid'], 
                                                             model_paramters['Needs_reference_dose'])
-                    if auto_plan_name not in plan_names:
-                        print('Your plan didnt existed, I will create ', auto_plan_name)
-                        #run planning
-                        t_plan_generation, t_plan_optimization = auto_planning.create_run_and_approve_IMPT_plan()
+                    if bool_adapt == 1:
+                        if auto_plan_name not in plan_names:
+                            print('Your plan didnt existed, I will create ', auto_plan_name)
+                            #run planning
+                            t_plan_generation, t_plan_optimization = auto_planning.create_run_and_approve_IMPT_plan()
 
-                        df_timing = df_timing.append({'#Fraction': 'eval', 'Plan_image': adapt_image_name, 'Plan_name': auto_plan_name,
-                                            't_plan_generation (min)': t_plan_generation/60, 't_plan_optimization (min)': t_plan_optimization/60}, ignore_index=True)
+                            df_timing = df_timing.append({'#Fraction': 'eval', 'Plan_image': adapt_image_name, 'Plan_name': auto_plan_name,
+                                                't_plan_generation (min)': t_plan_generation/60, 't_plan_optimization (min)': t_plan_optimization/60}, ignore_index=True)
 
-                        oa_strategy = model_paramters['OAStrategy']
-                    else:
-                        print('The plan you want to evaluate already exists : ', auto_plan_name)
-                        oa_strategy = model_paramters['OAStrategy']
-                        #case.TreatmentPlans[auto_plan_name].TreatmentCourse.TotalDose.UpdateDoseGridStructures()
+                            oa_strategy = model_paramters['OAStrategy']
+                        else:
+                            print('The plan you want to evaluate already exists : ', auto_plan_name)
+                            oa_strategy = model_paramters['OAStrategy']
+                            #case.TreatmentPlans[auto_plan_name].TreatmentCourse.TotalDose.UpdateDoseGridStructures()
 
-                    print('Running evaluation of ', model)
-                    evaluation = EvaluationPlanningDose_real_contours(auto_plan_name,adapt_image_name,i+1)
-                    results = evaluation.evaluate_dose_statistics()
+                        print('Running evaluation of ', model)
+                        evaluation = EvaluationPlanningDose(auto_plan_name)
+                        results = evaluation.evaluate_dose_statistics()
+                        results['Needs_adapt'] = [bool_adapt]*len(results['Patient'])
+                        results['#Fraction'] = [i+1]*len(results['Patient'])
+                        results['Strategy'] = [ model_paramters['Alias']]*len(results['Patient'])
+                        results["Adapt_image"] =  [adapt_image_name]*len(results['Patient'])
+
+                    
+                    if bool_adapt == 0:
+                        na_results_df = pd.read_excel(join(stats_folder,patient.Name+'_0_NoAdapt.xlsx'))
+                        na_results = na_results_df[na_results_df['#Fraction'] == i+1]
+                        results = na_results
                 
                 all_ct_results = all_ct_results.append(results)
 

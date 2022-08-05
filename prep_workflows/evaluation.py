@@ -40,7 +40,7 @@ class NeedsAdaptation:
                 ctv_low_coverage = self.dose_eval.GetDoseAtRelativeVolumes(RoiName="CTV_5425", RelativeVolumes=[0.98])*35
 
                 ctv_high_bool = ctv_high_coverage < 6650
-                ctv_low_bool = ctv_low_coverage < 5125
+                ctv_low_bool = ctv_low_coverage < 5154
 
         self.delete_eval_dose()
 
