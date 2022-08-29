@@ -49,8 +49,8 @@ def main():
         print("No patient loaded")
 
     #patient_list = ["ANON12","ANON16","ANON18","ANON26","ANON29","ANON34","ANON37","ANON38","ANON43","ANON6"]
-    #patient_list = ["ANON37","ANON26","ANON18"]
-    patient_list = ["ANON34","ANON37","ANON38","ANON43","ANON6"]
+    patient_list = ["ANON37"]
+    #patient_list = ["ANON38"]
     model_list = ["0_NoAdapt","1_AutoRS_def_rois", "2_MimClin_rr_rois","3_MimDef_def_rois"]
     
     for patient_name in patient_list:

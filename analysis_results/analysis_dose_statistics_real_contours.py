@@ -29,7 +29,7 @@ figures_path = 'C:\\Elena\\results_real_contours\\Figures'
 patient_list = ['ANON6','ANON12','ANON16','ANON29','ANON34','ANON38','ANON43','ANON18','ANON26','ANON37']
 model_list = ['0_NoAdapt','2_Mimick_ClinDose_rr_rois','3_Mimick_DefDose_def_rois','1_RSpred_RSmim_def_rois']
 
-figures_to_plot = []
+figures_to_plot = ["V_all_CTV"]
 #figures_to_plot = ["V_all_CTV", "V_all_CTV_zoom","V_allOAR","V_NTCP"]
 all_figures = ["V_all_CTV","V_OAR1","V_OAR2","V_OAR3", "V_NTCP","H_OAR_Dmean","H_CTVs", "V_all_organs"]
 
@@ -309,7 +309,8 @@ for model in model_list:
     max_ctv7000 = max(ctv7000_val_temp['Abs_value'])
     median_ctv7000 = statistics.median(ctv7000_val_temp['Abs_value'])
     print(model, 'Min: ', min_ctv7000, 'Max: ', max_ctv7000,', median: ', median_ctv7000)
-    fail_cases = ctv7000_val_temp.apply(lambda x: x['Abs_value'] < 6600, axis=1).sum()
+    print(model, 'Min: ', min_ctv7000*100/7000, 'Max: ', max_ctv7000*100/7000,', median: ', median_ctv7000*100/7000)
+    fail_cases = ctv7000_val_temp.apply(lambda x: x['Abs_value'] < 6650, axis=1).sum()
     print(model, 'Abs failure: ', fail_cases, '% failure: ', fail_cases*100/20,'%')
 
 for model in model_list:
@@ -330,6 +331,8 @@ for model in model_list:
     max_ctv5425 = max(ctv5425_val_temp['Abs_value'])
     median_ctv5425 = statistics.median(ctv5425_val_temp['Abs_value'])
     print(model, 'Min: ', min_ctv5425, 'Max: ', max_ctv5425, ', median: ', median_ctv5425)
+    print(model, 'Min: ', min_ctv5425*100/5425, 'Max: ', max_ctv5425*100/5425, ', median: ', median_ctv5425*100/5425)
+
     fail_cases = ctv5425_val_temp.apply(lambda x: x['Abs_value'] < 5150, axis=1).sum()
     print(model, 'Abs failure: ', fail_cases, '% failure: ', fail_cases*100/20,'%')
 

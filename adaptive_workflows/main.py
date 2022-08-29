@@ -47,7 +47,7 @@ def main():
 
     #patient_list = ["ANON6","ANON12","ANON16","ANON18","ANON26","ANON29","ANON34","ANON37","ANON38","ANON43"]
     #patient_list = ["ANON37","ANON26","ANON18"]
-    patient_list = ["ANON43","ANON38"]
+    patient_list = ["ANON37"]
     model_list = ["0_NoAdapt","1_AutoRS_def_rois", "2_MimClin_rr_rois","3_MimDef_def_rois"]
     #model_list = ["0_NoAdapt","1_AutoRS_def_rois", "2_MimClin_rr_rois","3_MimDef_def_rois"]
     #adapt_strategy = ["Iniital_plan_pct", "Last_plan_rcts", "Best_of_plans_rcts"]

@@ -24,9 +24,8 @@ from scipy import stats
 
 my_path = 'C:\\Elena\\results_all_fractions\\dose_statistics' 
 figures_path = 'C:\\Elena\\results_all_fractions\\Figures'
-#patient_list = ['ANON6','ANON12','ANON16','ANON29','ANON34','ANON38','ANON18','ANON26','ANON37','ANON43']
+patient_list = ['ANON6','ANON12','ANON16','ANON18','ANON26','ANON29','ANON34','ANON37','ANON38','ANON43']
 #patient_list = ['ANON18','ANON26','ANON37']
-patient_list = ['ANON12','ANON16']
 model_list = ['0_NoAdapt','2_Mimick_ClinDose_rr_rois','3_Mimick_DefDose_def_rois','1_RSpred_RSmim_def_rois']
 
 figures_to_plot = []
@@ -50,6 +49,8 @@ for patient in patient_list:
         my_df = my_df.append(pat_df_model)
 
 my_df.to_excel(join(my_path,"data_frame_for_plots.xlsx"))
+
+
 df_NA = pd.DataFrame(columns=['Patient','Plan_name','ClinicalGoal','Abs_value','Strategy','Adapt_image','Needs_adapt','#Fraction'])
 df_DR = pd.DataFrame(columns=['Patient','Plan_name','ClinicalGoal','Abs_value','Strategy','Adapt_image','Needs_adapt','#Fraction'])
 df_DEF = pd.DataFrame(columns=['Patient','Plan_name','ClinicalGoal','Abs_value','Strategy','Adapt_image','Needs_adapt','#Fraction'])
@@ -71,21 +72,20 @@ for patient in patient_list:
     #DF ML
     df_ML_pat = pd.read_excel(join(my_path,patient+'_1_RSpred_RSmim_def_rois.xlsx'))
     df_ML_pat = df_ML_pat.rename(columns={"Value": "Abs_value"})
-    df_ML = df_DEF.append(df_ML_pat)
+    df_ML = df_ML.append(df_ML_pat)
     
 df_NA.drop(columns=['Unnamed: 0'])
 df_DR.drop(columns=['Unnamed: 0'])
 df_DEF.drop(columns=['Unnamed: 0'])
 df_ML.drop(columns=['Unnamed: 0'])
+
 ##Analysis CTV
-ctv_list = ["CTV_5425_D98"]
+ctv_list = ["CTV_7000_D98","CTV_5425_D98"]
 df_ctv = my_df[my_df['ClinicalGoal'].isin(ctv_list)]
 df_ctv_NA = df_NA[df_NA['ClinicalGoal'].isin(ctv_list)]
 df_ctv_DR = df_DR[df_DR['ClinicalGoal'].isin(ctv_list)]
 df_ctv_DEF= df_DEF[df_DEF['ClinicalGoal'].isin(ctv_list)]
 df_ctv_ML = df_ML[df_ML['ClinicalGoal'].isin(ctv_list)]
-
-
 
 ############## LEGEND FOR FIGURES ###############
 blue_patch = mpatches.Patch(color=sns.color_palette()[0], label='NoAdapt')
@@ -311,6 +311,7 @@ if "V_allOAR" in figures_to_plot:
     plt.show()
     fig9.savefig(figures_path+"\\Dmean_OARs_evaluation.png", format='png', dpi=1200, bbox_inches='tight')
 
+"""
 #### DELIVERY ###
 my_path_schedules = 'C:\\Elena\\results\\different_ttmt_schedules'
 models = ['1_RSpred_RSmim_def_rois','2_Mimick_ClinDose_rr_rois','3_Mimick_DefDose_def_rois']
@@ -328,48 +329,164 @@ for adapt_st in adapt_strategies:
             
             print(patient, model, adaptation_rate)
             
-        
+"""       
 ############# Metrics analysis #####################
 ####### CTV 7000 ######
-ctv7000_val =  df_ctv[df_ctv['ClinicalGoal'] == 'CTVp_7000_D98']
+ctv7000_val =  df_ctv[df_ctv['ClinicalGoal'] == 'CTV_7000_D98']
 print("############ STATS CTV7000 ############")
-model_list = ["0_NA","2_MimCl","3_MimDef","1_Auto"]
+print("############ ONLY ADAPTED FRACTIONS ############")
+model_list = ["0_NA","2_MimCl_","3_MimDef_","1_Auto_"]
+
 for model in model_list:
     ctv7000_val_temp = ctv7000_val[ctv7000_val['Strategy'] == model]
+    ctv7000_val_temp = ctv7000_val_temp[ctv7000_val_temp['Needs_adapt'] == 1]
+    print("#FRACTIONS #", len(ctv7000_val_temp))
     min_ctv7000 = min(ctv7000_val_temp['Abs_value'])
     max_ctv7000 = max(ctv7000_val_temp['Abs_value'])
     median_ctv7000 = statistics.median(ctv7000_val_temp['Abs_value'])
     print(model, 'Min: ', min_ctv7000, 'Max: ', max_ctv7000,', median: ', median_ctv7000)
-    fail_cases = ctv7000_val_temp.apply(lambda x: x['Abs_value'] < 6600, axis=1).sum()
-    print(model, 'Abs failure: ', fail_cases, '% failure: ', fail_cases*100/20,'%')
+    fail_cases = ctv7000_val_temp.apply(lambda x: x['Abs_value'] < 6650, axis=1).sum()
+    
+    print(model, 'Abs failure: ', fail_cases, ', % failure: ', fail_cases*100/len(ctv7000_val_temp),'%')
 
+
+print("############ ALL FRACTIONS ############")
+
+ctv70_t_na = df_ctv_NA[df_ctv_NA['ClinicalGoal'] == 'CTV_7000_D98']
+len(ctv70_t_na)
+print("#FRACTIONS #", len(ctv70_t_na))
+min_ctv7000_na = min(ctv70_t_na['Abs_value'])
+max_ctv7000_na = max(ctv70_t_na['Abs_value'])
+median_ctv7000_na = statistics.median(ctv70_t_na['Abs_value'])
+print("NA", 'Min: ', min_ctv7000_na, 'Max: ', max_ctv7000_na,', median: ', median_ctv7000_na)
+print("NA", 'Min: ', min_ctv7000_na/7000, 'Max: ', max_ctv7000_na/7000,', median: ', median_ctv7000_na/7000)
+fail_cases = ctv70_t_na.apply(lambda x: x['Abs_value'] < 6650, axis=1).sum()
+
+print("NA", 'Abs failure: ', fail_cases, ', % failure: ', fail_cases*100/len(ctv70_t_na),'%')
+
+ctv70_t_dr = df_ctv_DR[df_ctv_DR['ClinicalGoal'] == 'CTV_7000_D98']
+len(ctv70_t_dr)
+print("#FRACTIONS #", len(ctv70_t_dr))
+min_ctv7000_dr = min(ctv70_t_dr['Abs_value'])
+max_ctv7000_dr = max(ctv70_t_dr['Abs_value'])
+median_ctv7000_dr = statistics.median(ctv70_t_dr['Abs_value'])
+print("DR", 'Min: ', min_ctv7000_dr, 'Max: ', max_ctv7000_dr,', median: ', median_ctv7000_dr)
+print("DR", 'Min: ', min_ctv7000_dr/7000, 'Max: ', max_ctv7000_dr/7000,', median: ', median_ctv7000_dr/7000)
+fail_cases = ctv70_t_dr.apply(lambda x: x['Abs_value'] < 6650, axis=1).sum()
+
+print("DR", 'Abs failure: ', fail_cases, ', % failure: ', fail_cases*100/len(ctv70_t_dr),'%')
+
+ctv70_t_def = df_ctv_DEF[df_ctv_DEF['ClinicalGoal'] == 'CTV_7000_D98']
+len(ctv70_t_def)
+print("#FRACTIONS #", len(ctv70_t_def))
+min_ctv7000_def = min(ctv70_t_def['Abs_value'])
+max_ctv7000_def = max(ctv70_t_def['Abs_value'])
+median_ctv7000_def = statistics.median(ctv70_t_def['Abs_value'])
+print("DEF", 'Min: ', min_ctv7000_def, 'Max: ', max_ctv7000_def,', median: ', median_ctv7000_def)
+print("DEF", 'Min: ', min_ctv7000_def/7000, 'Max: ', max_ctv7000_def/7000,', median: ', median_ctv7000_def/7000)
+
+fail_cases = ctv70_t_def.apply(lambda x: x['Abs_value'] < 6650, axis=1).sum()
+print("DEF", 'Abs failure: ', fail_cases, ', % failure: ', fail_cases*100/len(ctv70_t_def),'%')
+
+
+ctv70_t_ml = df_ctv_ML[df_ctv_ML['ClinicalGoal'] == 'CTV_7000_D98']
+len(ctv70_t_ml)
+print("#FRACTIONS #", len(ctv70_t_ml))
+min_ctv7000_ml = min(ctv70_t_ml['Abs_value'])
+max_ctv7000_ml = max(ctv70_t_ml['Abs_value'])
+median_ctv7000_ml = statistics.median(ctv70_t_ml['Abs_value'])
+print("ML", 'Min: ', min_ctv7000_ml, 'Max: ', max_ctv7000_ml,', median: ', median_ctv7000_ml)
+print("ML", 'Min: ', min_ctv7000_ml/7000, 'Max: ', max_ctv7000_ml/7000,', median: ', median_ctv7000_ml/7000)
+
+fail_cases = ctv70_t_ml.apply(lambda x: x['Abs_value'] < 6650, axis=1).sum()
+print("ML", 'Abs failure: ', fail_cases, ', % failure: ', fail_cases*100/len(ctv70_t_ml),'%')
+
+
+"""   
 for model in model_list:
     ctv7000_val_temp = ctv7000_val[ctv7000_val['Strategy'] == model]
     min_ctv7000 = min(ctv7000_val_temp['Value (Gy)'])
     median_ctv7000 = statistics.median(ctv7000_val_temp['Value (Gy)'])
     iqr_ctv7000 = stats.iqr(ctv7000_val_temp['Value (Gy)'])
     print(model, ' DELTA Min abs value CTVp  7000: ', min_ctv7000, ', DELTA median: ', median_ctv7000, ',  DELTA iqr: ', iqr_ctv7000)
-
+"""   
 
 ####### CTV 5425 ######
 ctv5425_val =  df_ctv[df_ctv['ClinicalGoal'] == 'CTV_5425_D98']
 print("############ STATS CTV5425 ############")
-model_list = ["0_NA","2_MimCl","3_MimDef","1_Auto"]
+print("############ ONLY ADAPTED FRACTIONS ############")
+
 for model in model_list:
     ctv5425_val_temp = ctv5425_val[ctv5425_val['Strategy'] == model]
     min_ctv5425 = min(ctv5425_val_temp['Abs_value'])
     max_ctv5425 = max(ctv5425_val_temp['Abs_value'])
     median_ctv5425 = statistics.median(ctv5425_val_temp['Abs_value'])
+    print("#FRACTIONS #", len(ctv5425_val_temp))
     print(model, 'Min: ', min_ctv5425, 'Max: ', max_ctv5425, ', median: ', median_ctv5425)
-    fail_cases = ctv5425_val_temp.apply(lambda x: x['Abs_value'] < 5150, axis=1).sum()
-    print(model, 'Abs failure: ', fail_cases, '% failure: ', fail_cases*100/20,'%')
+    fail_cases = ctv5425_val_temp.apply(lambda x: x['Abs_value'] < 5153.7, axis=1).sum()
+    print(model, 'Abs failure: ', fail_cases, ', % failure: ', fail_cases*100/len(ctv5425_val_temp),'%')
 
+print("############ ALL FRACTIONS ############")
+
+ctv54_t_na = df_ctv_NA[df_ctv_NA['ClinicalGoal'] == 'CTV_5425_D98']
+len(ctv54_t_na)
+print("#FRACTIONS #", len(ctv54_t_na))
+min_ctv54_na = min(ctv54_t_na['Abs_value'])
+max_ctv54_na = max(ctv54_t_na['Abs_value'])
+median_ctv54_na = statistics.median(ctv54_t_na['Abs_value'])
+print("NA", 'Min: ', min_ctv54_na, 'Max: ', max_ctv54_na,', median: ', median_ctv54_na)
+print("NA", 'Min: ', min_ctv54_na/5425, 'Max: ', max_ctv54_na/5425,', median: ', median_ctv54_na/5425)
+
+fail_cases = ctv54_t_na.apply(lambda x: x['Abs_value'] < 5153.7, axis=1).sum()
+
+print("NA", 'Abs failure: ', fail_cases, ', % failure: ', fail_cases*100/len(ctv70_t_na),'%')
+
+ctv54_t_dr = df_ctv_DR[df_ctv_DR['ClinicalGoal'] == 'CTV_5425_D98']
+len(ctv54_t_dr)
+print("#FRACTIONS #", len(ctv54_t_dr))
+min_ctv54_dr = min(ctv54_t_dr['Abs_value'])
+max_ctv54_dr = max(ctv54_t_dr['Abs_value'])
+median_ctv54_dr = statistics.median(ctv54_t_dr['Abs_value'])
+print("DR", 'Min: ', min_ctv54_dr, 'Max: ', max_ctv54_dr,', median: ', median_ctv54_dr)
+print("DR", 'Min: ', min_ctv54_dr/5425, 'Max: ', max_ctv54_dr/5425,', median: ', median_ctv54_dr/5425)
+
+fail_cases = ctv54_t_dr.apply(lambda x: x['Abs_value'] < 5153.7, axis=1).sum()
+
+print("DR", 'Abs failure: ', fail_cases, ', % failure: ', fail_cases*100/len(ctv54_t_dr),'%')
+
+ctv54_t_def = df_ctv_DEF[df_ctv_DEF['ClinicalGoal'] == 'CTV_5425_D98']
+len(ctv54_t_def)
+print("#FRACTIONS #", len(ctv54_t_def))
+min_ctv54_def = min(ctv54_t_def['Abs_value'])
+max_ctv54_def = max(ctv54_t_def['Abs_value'])
+median_ctv54_def = statistics.median(ctv54_t_def['Abs_value'])
+print("DEF", 'Min: ', min_ctv54_def, 'Max: ', max_ctv54_def,', median: ', median_ctv54_def)
+print("DEF", 'Min: ', min_ctv54_def/5425, 'Max: ', max_ctv54_def/5425,', median: ', median_ctv54_def/5425)
+
+fail_cases = ctv54_t_def.apply(lambda x: x['Abs_value'] < 5153.7, axis=1).sum()
+print("DEF", 'Abs failure: ', fail_cases, ', % failure: ', fail_cases*100/len(ctv54_t_def),'%')
+
+
+ctv54_t_ml = df_ctv_ML[df_ctv_ML['ClinicalGoal'] =='CTV_5425_D98']
+len(ctv54_t_ml)
+print("#FRACTIONS #", len(ctv54_t_ml))
+min_ctv54_ml = min(ctv54_t_ml['Abs_value'])
+max_ctv54_ml = max(ctv54_t_ml['Abs_value'])
+median_ctv54_ml = statistics.median(ctv54_t_ml['Abs_value'])
+print("ML", 'Min: ', min_ctv54_ml, 'Max: ', max_ctv54_ml,', median: ', median_ctv54_ml)
+print("ML", 'Min: ', min_ctv54_ml/5425, 'Max: ', max_ctv54_ml/5425,', median: ', median_ctv54_ml/5425)
+
+fail_cases = ctv54_t_ml.apply(lambda x: x['Abs_value'] < 5153.7, axis=1).sum()
+print("ML", 'Abs failure: ', fail_cases, ', % failure: ', fail_cases*100/len(ctv54_t_ml),'%')
+
+"""
 for model in model_list:
     ctv5425_val_temp = ctv5425_val[ctv5425_val['Strategy'] == model]
     min_ctv5425 = min(ctv5425_val_temp['Value (Gy)'])
     median_ctv5425 = statistics.median(ctv5425_val_temp['Value (Gy)'])
     iqr_ctv5425 = stats.iqr(ctv5425_val_temp['Value (Gy)'])
     print(model, ' DELTA Min abs value CTVp  5425: ', min_ctv5425, ', DELTA median: ', median_ctv5425, ',  DELTA iqr: ', iqr_ctv5425)
+
 
 ################ Statistical significance analysis ############
 
@@ -481,3 +598,4 @@ for oar_stat in oar_list4:
 
 print(df_stats_oar_relative)
 
+"""

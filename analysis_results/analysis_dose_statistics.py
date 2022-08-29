@@ -349,14 +349,14 @@ if "Catplot_OARs" in figures_to_plot:
     plt.show()
     g3.savefig(figures_path+"\\OAR3_catplot.png", format='png', dpi=1200, bbox_inches='tight')
 
-"""
+
 #### DELIVERY ###
 my_path_schedules = 'C:\\Elena\\results\\different_ttmt_schedules'
-patient_list_schedule = ['ANON6','ANON12','ANON16','ANON29','ANON34','ANON38','ANON43']
-models = ['1_RSpred_RSmim_def_rois','2_Mimick_ClinDose_rr_rois','3_Mimick_DefDose_def_rois']
+patient_list_schedule = ['ANON6','ANON12','ANON16','ANON29','ANON34','ANON38','ANON43','ANON18','ANON26','ANON37']
+models = ['2_Mimick_ClinDose_rr_rois','3_Mimick_DefDose_def_rois','1_RSpred_RSmim_def_rois']
 
 adapt_strategies = ['Best_plan','Last_plan']
-
+print("#### DELIVERY ###")
 for adapt_st in adapt_strategies:
     print(adapt_st)
     for patient in patient_list_schedule:
@@ -366,8 +366,7 @@ for adapt_st in adapt_strategies:
             adaptation_rate = sum(schedule_df['Needs_new_plan'])
             
             print(patient, model, adaptation_rate)
-      """  
-       
+"""     
 ############# Metrics analysis #####################
 ####### CTV 7000 ######
 ctv7000_val =  df_ctv[df_ctv['ClinicalGoal'] == 'CTVp_7000_D98']
@@ -379,7 +378,8 @@ for model in model_list:
     max_ctv7000 = max(ctv7000_val_temp['Abs_value'])
     median_ctv7000 = statistics.median(ctv7000_val_temp['Abs_value'])
     print(model, 'Min: ', min_ctv7000, 'Max: ', max_ctv7000,', median: ', median_ctv7000)
-    fail_cases = ctv7000_val_temp.apply(lambda x: x['Abs_value'] < 6600, axis=1).sum()
+    print(model, 'Min: ', min_ctv7000*100/7000, 'Max: ', max_ctv7000*100/7000,', median: ', median_ctv7000*100/7000)
+    fail_cases = ctv7000_val_temp.apply(lambda x: x['Abs_value'] < 6650, axis=1).sum()
     print(model, 'Abs failure: ', fail_cases, '% failure: ', fail_cases*100/20,'%')
 
 for model in model_list:
@@ -399,6 +399,7 @@ for model in model_list:
     max_ctv5425 = max(ctv5425_val_temp['Abs_value'])
     median_ctv5425 = statistics.median(ctv5425_val_temp['Abs_value'])
     print(model, 'Min: ', min_ctv5425, 'Max: ', max_ctv5425, ', median: ', median_ctv5425)
+    print(model, 'Min: ', min_ctv5425*100/5425, 'Max: ', max_ctv5425*100/542, ', median: ', median_ctv5425*100/542)
     fail_cases = ctv5425_val_temp.apply(lambda x: x['Abs_value'] < 5150, axis=1).sum()
     print(model, 'Abs failure: ', fail_cases, '% failure: ', fail_cases*100/10,'%')
 
@@ -562,4 +563,4 @@ for ntcp_stat in ntcp_list:
 
 print(df_stats_ntcp_relative)
 
-
+""" 

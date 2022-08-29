@@ -46,11 +46,11 @@ def main():
     except:
         print("No patient loaded")
 
-    patient_list = ["ANON38","ANON43"]
-    #patient_list = ["ANON43","ANON12","ANON29","ANON38","ANON6"]
+    #patient_list = ['ANON6','ANON12','ANON16','ANON29','ANON34','ANON38','ANON43','ANON18','ANON26','ANON37']
+    patient_list = ['ANON37']
     model_list = ["0_NoAdapt","1_AutoRS_def_rois", "2_MimClin_rr_rois","3_MimDef_def_rois"]
     #model_list = model_list = ["0_NoAdapt","1_AutoRS_def_rois", "2_MimClin_rr_rois","3_MimDef_def_rois"]
-    adapt_strategy = ["Inital_plan_pct", "Last_plan_rcts", "Best_of_plans_rcts"]
+
 
     for patient_name in patient_list:
 
@@ -63,7 +63,7 @@ def main():
         patient = get_current("Patient")
         pct_name = "pCT"
         initial_plan = "ML_IMPT_plan"
-        adaptation_strategy_init = "Last_plan"
+        adaptation_strategy_init = "Last_plan" #Best_plan or Last_plan
         results_planning = evaluate_initial_planning(initial_plan)
 
         treatment_schedule_folder = "C:\\Elena\\results\\treatment_schedules"

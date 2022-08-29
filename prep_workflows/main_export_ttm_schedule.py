@@ -53,9 +53,9 @@ def main():
             adapt_image_name = "Corrected " + cbct_name
         
         init_eval = EvaluateClinicalPlan(adapt_image_name, reference_plan_name)
-        start_time = time.time()
-        init_eval.map_rois_deformably()
-        deformable_mapping_time = time.time() - start_time
+        #start_time = time.time()
+        #init_eval.map_rois_deformably()
+        #deformable_mapping_time = time.time() - start_time
 
         init_adapt = NeedsAdaptation(adapt_image_name, reference_plan_name)
         adapt, ctv_low_coverage, ctv_high_coverage = init_adapt.check_adaptation_needed()
