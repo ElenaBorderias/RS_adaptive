@@ -29,7 +29,7 @@ figures_path = 'C:\\Elena\\results_NTCP\\Figures'
 patient_list = ['ANON6','ANON12','ANON16','ANON29','ANON34','ANON38','ANON43','ANON18','ANON26','ANON37']
 model_list = ['0_NoAdapt','2_Mimick_ClinDose_rr_rois','3_Mimick_DefDose_def_rois','1_RSpred_RSmim_def_rois']
 
-figures_to_plot = ["V_all_CTV","V_allOAR","V_NTCP","Catplot_OARs"]
+figures_to_plot = ["V_all_CTV","V_allOAR","V_NTCP"]
 all_figures = ["V_all_CTV","V_OAR1","V_OAR2","V_OAR3", "V_NTCP","V_HI","H_OAR_Dmean","H_CTVs", "V_all_organs"]
 
 my_df = pd.DataFrame(columns=['Patient','Plan_name','ClinicalGoal','Abs_value','Value','Value (Gy)'])
@@ -91,10 +91,10 @@ if "V_all_CTV" in figures_to_plot:
     plt.tight_layout()
     # Put a legend to the right of the current axis
     plt.legend(handles=[blue_patch, orange_patch, green_patch,red_patch], fontsize=11.5, ncol = 4, loc=(0,1.05), fancybox=True)
-
     plt.show()
     fig1.savefig(figures_path+"\\CTV_evaluation.png", format='png', dpi=1200, bbox_inches='tight')
-    
+
+
     ########CTV catplot 1 ###########
     sns.set(font_scale=1.1)
     df_ctv2 =  my_df[my_df['ClinicalGoal'].isin(ctv_list2)]
@@ -250,6 +250,8 @@ if "H_CTVs" in figures_to_plot:
     fig8.savefig(figures_path+"\\CTV_evaluation_horizontal.png", format='png', dpi=1200, bbox_inches='tight')
 
 if "V_allOAR" in figures_to_plot:
+    
+    """ 
     #####OAR 3 ######
     #sns.set(font_scale=1.1)
     fig9, ax9 = plt.subplots()
@@ -262,14 +264,13 @@ if "V_allOAR" in figures_to_plot:
     ax9.set(xticklabels=['Parotid L','Parotid R','SMG L','SMG R','PCMSup','PCMMid','PCMInf','Oral Cavity'])
     
     f9.legend(handles=[blue_patch, orange_patch, green_patch,red_patch], fontsize=11.5, ncol = 4, loc=(0,1.05), fancybox=True)
-
     plt.show()
     fig9.savefig(figures_path+"\\Dmean_OARs_evaluation.png", format='png', dpi=1200, bbox_inches='tight')
-
+    """
     #####OAR 5 ######
     
     #sns.set(style="white", font_scale=1.5)
-    #sns.set(style="darkgrid", font_scale=1.5)
+    sns.set(style="darkgrid", font_scale=1.3)
     fig10, ax10 = plt.subplots()
     oar_list5 = oar_list4 + oar_list3
     df_oars5 = my_df[my_df['ClinicalGoal'].isin(oar_list5)]
@@ -278,9 +279,10 @@ if "V_allOAR" in figures_to_plot:
     for i in range(0,len(oar_list5)):
         plt.axvline(x=i+0.5, color='grey', linestyle='-',linewidth = 0.5)
     plt.axhline(y=0, color='grey', linestyle='--',linewidth = 0.5)
+    plt.ylim(-9,15)
     ax10.set(xlabel="OAR Metric",ylabel= "Difference respect planning [Gy] \n  ← Lower dose | Higher dose  →")
     ax10.set_xticklabels(ax10.get_xticks()-0.5, rotation = 45)
-    ax10.set(xticklabels=['Parotid L','Parotid R','SMG L','SMG R','PCMSup','PCMMid','PCMInf','Oral Cavity',"SpinalCord \n D0.03cc","Brainstem \n D0.03cc","Body \n D0.03cc"])
+    ax10.set(xticklabels=['Parotid L \n Dmean','Parotid R \n Dmean ','SMG L \n Dmean','SMG R \n Dmean','PCMSup \n Dmean','PCMMid \n Dmean','PCMInf \n Dmean','Oral Cavity \n Dmean',"SpinalCord \n D0.03cc","Brainstem \n D0.03cc","Body \n D0.03cc"])
     plt.gcf().set_size_inches(10, 6)
     plt.tight_layout()
     f10.legend(handles=[blue_patch, orange_patch, green_patch,red_patch], fontsize=15.5, ncol = 4, loc=(0.1,1.05), fancybox=True)
@@ -349,7 +351,7 @@ if "Catplot_OARs" in figures_to_plot:
     plt.show()
     g3.savefig(figures_path+"\\OAR3_catplot.png", format='png', dpi=1200, bbox_inches='tight')
 
-
+"""
 #### DELIVERY ###
 my_path_schedules = 'C:\\Elena\\results\\different_ttmt_schedules'
 patient_list_schedule = ['ANON6','ANON12','ANON16','ANON29','ANON34','ANON38','ANON43','ANON18','ANON26','ANON37']
@@ -385,9 +387,10 @@ for model in model_list:
 for model in model_list:
     ctv7000_val_temp = ctv7000_val[ctv7000_val['Plan_name'] == model]
     min_ctv7000 = min(ctv7000_val_temp['Value (Gy)'])
+    max_ctv7000 = max(ctv7000_val_temp['Value (Gy)'])
     median_ctv7000 = statistics.median(ctv7000_val_temp['Value (Gy)'])
     iqr_ctv7000 = stats.iqr(ctv7000_val_temp['Value (Gy)'])
-    print(model, ' DELTA Min abs value CTVp  7000: ', min_ctv7000, ', DELTA median: ', median_ctv7000, ',  DELTA iqr: ', iqr_ctv7000)
+    print(model, ' DELTA Min CTVp  7000: ', min_ctv7000,' DELTA Max CTVp  7000: ', max_ctv7000, ', DELTA median: ', median_ctv7000, ',  DELTA iqr: ', iqr_ctv7000)
 
 ####### CTV 5425 ######
 ctv5425_val =  df_ctv[df_ctv['ClinicalGoal'] == 'CTV_5425_D98']
@@ -406,9 +409,10 @@ for model in model_list:
 for model in model_list:
     ctv5425_val_temp = ctv5425_val[ctv5425_val['Plan_name'] == model]
     min_ctv5425 = min(ctv5425_val_temp['Value (Gy)'])
+    max_ctv5425 = max(ctv5425_val_temp['Value (Gy)'])
     median_ctv5425 = statistics.median(ctv5425_val_temp['Value (Gy)'])
     iqr_ctv5425 = stats.iqr(ctv5425_val_temp['Value (Gy)'])
-    print(model, ' DELTA Min abs value CTVp  5425: ', min_ctv5425, ', DELTA median: ', median_ctv5425, ',  DELTA iqr: ', iqr_ctv5425)
+    print(model, ' DELTA Min CTV5425: ', min_ctv5425, ' DELTA Max CTV5425: ', max_ctv5425,', DELTA median: ', median_ctv5425, ',  DELTA iqr: ', iqr_ctv5425)
 
 ################ Statistical significance analysis ############
 
@@ -563,4 +567,4 @@ for ntcp_stat in ntcp_list:
 
 print(df_stats_ntcp_relative)
 
-""" 
+ 

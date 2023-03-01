@@ -451,6 +451,14 @@ print("DR", 'Min: ', min_ctv54_dr, 'Max: ', max_ctv54_dr,', median: ', median_ct
 print("DR", 'Min: ', min_ctv54_dr/5425, 'Max: ', max_ctv54_dr/5425,', median: ', median_ctv54_dr/5425)
 
 fail_cases = ctv54_t_dr.apply(lambda x: x['Abs_value'] < 5153.7, axis=1).sum()
+ctv54_t_dr["FailCases"] = ctv54_t_dr.apply(lambda x: x['Abs_value'] < 5153.7, axis=1)
+dr_true_54 = ctv54_t_dr[ctv54_t_dr["FailCases"] == True]
+ctv70_t_dr["FailCases"] = ctv70_t_dr.apply(lambda x: x['Abs_value'] < 6650, axis=1)
+dr_true_70 = ctv70_t_dr[ctv70_t_dr["FailCases"] == True]
+
+
+dr_true_70['Plan_name'].isin(dr_true_54['Plan_name']).value_counts()
+dr_true_70['Patient'].isin(dr_true_54['Patient'])
 
 print("DR", 'Abs failure: ', fail_cases, ', % failure: ', fail_cases*100/len(ctv54_t_dr),'%')
 
@@ -478,6 +486,61 @@ print("ML", 'Min: ', min_ctv54_ml/5425, 'Max: ', max_ctv54_ml/5425,', median: ',
 
 fail_cases = ctv54_t_ml.apply(lambda x: x['Abs_value'] < 5153.7, axis=1).sum()
 print("ML", 'Abs failure: ', fail_cases, ', % failure: ', fail_cases*100/len(ctv54_t_ml),'%')
+
+df_ctv_NA_recontoured = pd.DataFrame(columns=['Patient', 'Plan_name', 'ClinicalGoal',"Abs_value","Strategy","Adapt_image"])
+df_ctv_DR_recontoured = pd.DataFrame(columns=['Patient', 'Plan_name', 'ClinicalGoal',"Abs_value","Strategy","Adapt_image"])
+df_ctv_DEF_recontoured = pd.DataFrame(columns=['Patient', 'Plan_name', 'ClinicalGoal',"Abs_value","Strategy","Adapt_image"])
+df_ctv_ML_recontoured = pd.DataFrame(columns=['Patient', 'Plan_name', 'ClinicalGoal',"Abs_value","Strategy","Adapt_image"])
+
+for i, set in corr_cbcts.iterrows():
+    
+    cbct = corr_cbcts.loc[i,"Plan_name"]
+    pat = corr_cbcts.loc[i,"Patient"]
+    print(cbct,pat)
+    
+    temp_def_NA = df_ctv_NA[df_ctv_NA['Plan_name'].isin(["0_NA_" + cbct])]
+    temp_def_NA = temp_def_NA[temp_def_NA['Patient'].isin([pat])]
+    df_ctv_NA_recontoured = pd.concat([df_ctv_NA_recontoured,temp_def_NA])
+    
+    temp_def_DR = df_ctv_DR[df_ctv_DR['Plan_name'].isin(["2_MimCl_" + cbct])]
+    temp_def_DR = temp_def_DR[temp_def_DR['Patient'].isin([pat])]
+    print(len(temp_def_DR))
+    df_ctv_DR_recontoured = pd.concat([df_ctv_DR_recontoured,temp_def_DR])
+    
+    temp_def_DEF = df_ctv_DEF[df_ctv_DEF['Plan_name'].isin(["3_MimDef_" + cbct])]
+    temp_def_DEF = temp_def_DEF[temp_def_DEF['Patient'].isin([pat])]
+    df_ctv_DEF_recontoured = pd.concat([df_ctv_DEF_recontoured,temp_def_DEF])
+    
+    temp_def_ML = df_ctv_ML[df_ctv_ML['Plan_name'].isin(["1_Auto_" + cbct])]
+    temp_def_ML = temp_def_ML[temp_def_ML['Patient'].isin([pat])]
+    df_ctv_ML_recontoured = pd.concat([df_ctv_ML_recontoured,temp_def_ML])
+
+
+for ctv in ctv_list:
+    new_ctv_list = [ctv]
+    if ctv == "CTV_5425_D98":
+        threshold = 5153.7
+    if ctv == "CTV_7000_D98" :
+        threshold = 6650
+    else:
+        print("Not valid CTV metric")
+        
+    df_ctv_NA_recontoured_i = df_ctv_NA_recontoured[df_ctv_NA_recontoured['ClinicalGoal'].isin(new_ctv_list)]
+    fail_cases =df_ctv_NA_recontoured_i.apply(lambda x: x['Abs_value'] < threshold, axis=1).sum()
+    print("NA", 'Abs failure: ', fail_cases, ', % failure: ', fail_cases*100/len(df_ctv_NA_recontoured_i),'%')
+    
+    df_ctv_DR_recontoured_i = df_ctv_DR_recontoured[df_ctv_DR_recontoured['ClinicalGoal'].isin(new_ctv_list)]
+    fail_cases =df_ctv_DR_recontoured_i.apply(lambda x: x['Abs_value'] < threshold, axis=1).sum()
+    print("DR", 'Abs failure: ', fail_cases, ', % failure: ', fail_cases*100/len(df_ctv_DR_recontoured_i),'%')
+    
+    df_ctv_DEF_recontoured_i = df_ctv_DEF_recontoured[df_ctv_DEF_recontoured['ClinicalGoal'].isin(new_ctv_list)]
+    fail_cases =df_ctv_DEF_recontoured_i.apply(lambda x: x['Abs_value'] < threshold, axis=1).sum()
+    print("NA", 'Abs failure: ', fail_cases, ', % failure: ', fail_cases*100/len(df_ctv_DEF_recontoured_i),'%')
+    
+    df_ctv_ML_recontoured_i = df_ctv_ML_recontoured[df_ctv_ML_recontoured['ClinicalGoal'].isin(new_ctv_list)]
+    fail_cases =df_ctv_ML_recontoured_i.apply(lambda x: x['Abs_value'] < threshold, axis=1).sum()
+    print("NA", 'Abs failure: ', fail_cases, ', % failure: ', fail_cases*100/len(df_ctv_ML_recontoured_i),'%')
+
 
 """
 for model in model_list:
